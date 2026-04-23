@@ -51,18 +51,14 @@ export const ResetPasswordPage: React.FC = () => {
   if (!token) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-        <div className="sm:mx-auto sm:w-full sm:max-w-md">
-          <div className="text-center">
-            <h2 className="text-3xl font-extrabold text-gray-900">
-              Invalid reset link
-            </h2>
-            <p className="mt-2 text-sm text-gray-600">
-              This password reset link is invalid or has expired.
-            </p>
-            <Button className="mt-4" onClick={() => navigate('/forgot-password')}>
-              Request new reset link
-            </Button>
-          </div>
+        <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
+          <h2 className="text-3xl font-extrabold text-gray-900">Invalid reset link</h2>
+          <p className="mt-2 text-sm text-gray-600">
+            This password reset link is invalid or has expired.
+          </p>
+          <Button className="mt-4" onClick={() => navigate('/forgot-password')}>
+            Request new reset link
+          </Button>
         </div>
       </div>
     );

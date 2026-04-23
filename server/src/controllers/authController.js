@@ -1,4 +1,3 @@
-import crypto from 'crypto';
 import User from '../models/User.js';
 import generateToken from '../utils/generateToken.js';
 import sendEmail from '../utils/sendEmail.js';
@@ -14,12 +13,22 @@ const formatUserResponse = (user) => ({
   createdAt: user.createdAt
 });
 
+const cookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  maxAge: 7 * 24 * 60 * 60 * 1000
+};
+
 const setTokenCookie = (res, token) => {
-  res.cookie('token', token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-    maxAge: 7 * 24 * 60 * 60 * 1000
+  res.cookie('token', token, cookieOptions);
+};
+
+const clearTokenCookie = (res) => {
+  res.cookie('token', '', {
+    ...cookieOptions,
+    maxAge: 0,
+    expires: new Date(0)
   });
 };
 
@@ -105,12 +114,11 @@ export const loginUser = async (req, res, next) => {
 
 export const logoutUser = async (req, res, next) => {
   try {
-    res.cookie('token', '', {
-      httpOnly: true,
-      expires: new Date(0)
-    });
+    clearTokenCookie(res);
 
-    res.status(200).json({ message: 'Logged out successfully' });
+    res.status(200).json({
+      message: 'Logged out successfully'
+    });
   } catch (error) {
     next(error);
   }
@@ -160,12 +168,8 @@ export const forgotPassword = async (req, res, next) => {
       <div style="font-family: Arial, sans-serif; line-height: 1.6;">
         <h2>Reset your Business Nexus password</h2>
         <p>You requested a password reset.</p>
-        <p>
-          Click the link below to set a new password:
-        </p>
-        <p>
-          <a href="${resetUrl}" target="_blank">${resetUrl}</a>
-        </p>
+        <p>Click the link below to set a new password:</p>
+        <p><a href="${resetUrl}" target="_blank">${resetUrl}</a></p>
         <p>This link expires in 10 minutes.</p>
       </div>
     `;

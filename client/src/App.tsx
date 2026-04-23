@@ -4,6 +4,8 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 
 import { DashboardLayout } from './components/layout/DashboardLayout';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import { RoleRoute } from './components/auth/RoleRoute';
 
 import { LoginPage } from './pages/auth/LoginPage';
 import { RegisterPage } from './pages/auth/RegisterPage';
@@ -37,51 +39,58 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-          <Route path="/dashboard" element={<DashboardLayout />}>
-            <Route path="entrepreneur" element={<EntrepreneurDashboard />} />
-            <Route path="investor" element={<InvestorDashboard />} />
-          </Route>
+          <Route element={<ProtectedRoute />}>
+            <Route path="/dashboard" element={<DashboardLayout />}>
+              <Route element={<RoleRoute allowedRole="entrepreneur" />}>
+                <Route path="entrepreneur" element={<EntrepreneurDashboard />} />
+              </Route>
 
-          <Route path="/profile" element={<DashboardLayout />}>
-            <Route path="entrepreneur/:id" element={<EntrepreneurProfile />} />
-            <Route path="investor/:id" element={<InvestorProfile />} />
-          </Route>
+              <Route element={<RoleRoute allowedRole="investor" />}>
+                <Route path="investor" element={<InvestorDashboard />} />
+              </Route>
+            </Route>
 
-          <Route path="/investors" element={<DashboardLayout />}>
-            <Route index element={<InvestorsPage />} />
-          </Route>
+            <Route path="/profile" element={<DashboardLayout />}>
+              <Route path="entrepreneur/:id" element={<EntrepreneurProfile />} />
+              <Route path="investor/:id" element={<InvestorProfile />} />
+            </Route>
 
-          <Route path="/entrepreneurs" element={<DashboardLayout />}>
-            <Route index element={<EntrepreneursPage />} />
-          </Route>
+            <Route path="/investors" element={<DashboardLayout />}>
+              <Route index element={<InvestorsPage />} />
+            </Route>
 
-          <Route path="/messages" element={<DashboardLayout />}>
-            <Route index element={<MessagesPage />} />
-          </Route>
+            <Route path="/entrepreneurs" element={<DashboardLayout />}>
+              <Route index element={<EntrepreneursPage />} />
+            </Route>
 
-          <Route path="/notifications" element={<DashboardLayout />}>
-            <Route index element={<NotificationsPage />} />
-          </Route>
+            <Route path="/messages" element={<DashboardLayout />}>
+              <Route index element={<MessagesPage />} />
+            </Route>
 
-          <Route path="/documents" element={<DashboardLayout />}>
-            <Route index element={<DocumentsPage />} />
-          </Route>
+            <Route path="/notifications" element={<DashboardLayout />}>
+              <Route index element={<NotificationsPage />} />
+            </Route>
 
-          <Route path="/settings" element={<DashboardLayout />}>
-            <Route index element={<SettingsPage />} />
-          </Route>
+            <Route path="/documents" element={<DashboardLayout />}>
+              <Route index element={<DocumentsPage />} />
+            </Route>
 
-          <Route path="/help" element={<DashboardLayout />}>
-            <Route index element={<HelpPage />} />
-          </Route>
+            <Route path="/settings" element={<DashboardLayout />}>
+              <Route index element={<SettingsPage />} />
+            </Route>
 
-          <Route path="/deals" element={<DashboardLayout />}>
-            <Route index element={<DealsPage />} />
-          </Route>
+            <Route path="/help" element={<DashboardLayout />}>
+              <Route index element={<HelpPage />} />
+            </Route>
 
-          <Route path="/chat" element={<DashboardLayout />}>
-            <Route index element={<ChatPage />} />
-            <Route path=":userId" element={<ChatPage />} />
+            <Route path="/deals" element={<DashboardLayout />}>
+              <Route index element={<DealsPage />} />
+            </Route>
+
+            <Route path="/chat" element={<DashboardLayout />}>
+              <Route index element={<ChatPage />} />
+              <Route path=":userId" element={<ChatPage />} />
+            </Route>
           </Route>
 
           <Route path="/" element={<Navigate to="/login" replace />} />

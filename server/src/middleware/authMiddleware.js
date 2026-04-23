@@ -15,7 +15,8 @@ export const protect = async (req, res, next) => {
     }
 
     if (!token) {
-      return res.status(401).json({ message: 'Not authorised, no token provided' });
+      res.status(401);
+      throw new Error('Not authorised, no token provided');
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -23,12 +24,30 @@ export const protect = async (req, res, next) => {
     const user = await User.findById(decoded.userId).select('-password');
 
     if (!user) {
-      return res.status(401).json({ message: 'Not authorised, user not found' });
+      res.status(401);
+      throw new Error('Not authorised, user not found');
     }
 
     req.user = user;
     next();
   } catch (error) {
-    return res.status(401).json({ message: 'Not authorised, invalid token' });
+    res.status(401);
+    next(new Error('Not authorised, invalid token'));
   }
+};
+
+export const authorizeRoles = (...allowedRoles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      res.status(401);
+      return next(new Error('Not authorised'));
+    }
+
+    if (!allowedRoles.includes(req.user.role)) {
+      res.status(403);
+      return next(new Error('Access denied: insufficient permissions'));
+    }
+
+    next();
+  };
 };

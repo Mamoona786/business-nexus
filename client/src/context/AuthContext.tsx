@@ -16,7 +16,10 @@ const USER_STORAGE_KEY = 'business_nexus_user';
 const TOKEN_STORAGE_KEY = 'business_nexus_token';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    const storedUser = localStorage.getItem(USER_STORAGE_KEY);
+    return storedUser ? JSON.parse(storedUser) : null;
+  });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -24,17 +27,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const storedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
 
-        if (storedToken) {
-          try {
-            const response = await getMeApi();
-            setUser(response.user as User);
-            localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.user));
-          } catch {
-            localStorage.removeItem(USER_STORAGE_KEY);
-            localStorage.removeItem(TOKEN_STORAGE_KEY);
-            setUser(null);
-          }
+        if (!storedToken) {
+          setUser(null);
+          return;
         }
+
+        const response = await getMeApi();
+        setUser(response.user as User);
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.user));
+      } catch {
+        setUser(null);
+        localStorage.removeItem(USER_STORAGE_KEY);
+        localStorage.removeItem(TOKEN_STORAGE_KEY);
       } finally {
         setIsLoading(false);
       }

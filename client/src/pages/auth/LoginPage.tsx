@@ -11,7 +11,7 @@ export const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>('entrepreneur');
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(false);
 
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -19,29 +19,17 @@ export const LoginPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setIsLoading(true);
+    setPageLoading(true);
 
     try {
       await login(email, password, role);
-      // Redirect based on user role
       navigate(role === 'entrepreneur' ? '/dashboard/entrepreneur' : '/dashboard/investor');
     } catch (err) {
       setError((err as Error).message);
-      setIsLoading(false);
+    } finally {
+      setPageLoading(false);
     }
   };
-
-  // // For demo purposes, pre-filled credentials
-  // const fillDemoCredentials = (userRole: UserRole) => {
-  //   if (userRole === 'entrepreneur') {
-  //     setEmail('sarah@techwave.io');
-  //     setPassword('password123');
-  //   } else {
-  //     setEmail('michael@vcinnovate.com');
-  //     setPassword('password123');
-  //   }
-  //   setRole(userRole);
-  // };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
@@ -125,82 +113,30 @@ export const LoginPage: React.FC = () => {
             />
 
             <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
-                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
-                  Remember me
-                </label>
-              </div>
-
-              <div className="text-sm">
+              <div className="text-sm ml-auto">
                 <Link to="/forgot-password" className="font-medium text-primary-600 hover:text-primary-500">
-  Forgot your password?
-</Link>
+                  Forgot your password?
+                </Link>
               </div>
             </div>
 
             <Button
               type="submit"
               fullWidth
-              isLoading={isLoading}
+              isLoading={pageLoading}
               leftIcon={<LogIn size={18} />}
             >
               Sign in
             </Button>
           </form>
 
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Demo Accounts</span>
-              </div>
-            </div>
-
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <Button
-                variant="outline"
-                // onClick={() => fillDemoCredentials('entrepreneur')}
-                leftIcon={<Building2 size={16} />}
-              >
-                Entrepreneur Demo
-              </Button>
-
-              <Button
-                variant="outline"
-                // onClick={() => fillDemoCredentials('investor')}
-                leftIcon={<CircleDollarSign size={16} />}
-              >
-                Investor Demo
-              </Button>
-            </div>
-          </div>
-
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Or</span>
-              </div>
-            </div>
-
-            <div className="mt-2 text-center">
-              <p className="text-sm text-gray-600">
-                Don't have an account?{' '}
-                <Link to="/register" className="font-medium text-primary-600 hover:text-primary-500">
-                  Sign up
-                </Link>
-              </p>
-            </div>
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600">
+              Don't have an account?{' '}
+              <Link to="/register" className="font-medium text-primary-600 hover:text-primary-500">
+                Sign up
+              </Link>
+            </p>
           </div>
         </div>
       </div>
