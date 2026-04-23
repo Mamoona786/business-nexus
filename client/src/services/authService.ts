@@ -3,6 +3,7 @@ import { UserRole } from '../types';
 
 const API = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json'
   }
@@ -10,9 +11,11 @@ const API = axios.create({
 
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem('business_nexus_token');
+
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
   return config;
 });
 
@@ -60,8 +63,12 @@ export const loginUserApi = async (
   return data;
 };
 
-export const forgotPasswordApi = async (email: string): Promise<{ message: string }> => {
-  const { data } = await API.post<{ message: string }>('/auth/forgot-password', { email });
+export const forgotPasswordApi = async (
+  email: string
+): Promise<{ message: string }> => {
+  const { data } = await API.post<{ message: string }>('/auth/forgot-password', {
+    email
+  });
   return data;
 };
 
@@ -69,9 +76,10 @@ export const resetPasswordApi = async (
   token: string,
   password: string
 ): Promise<{ message: string }> => {
-  const { data } = await API.post<{ message: string }>(`/auth/reset-password/${token}`, {
-    password
-  });
+  const { data } = await API.post<{ message: string }>(
+    `/auth/reset-password/${token}`,
+    { password }
+  );
   return data;
 };
 

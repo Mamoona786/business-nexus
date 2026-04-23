@@ -22,16 +22,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const initialiseAuth = async () => {
       try {
-        const storedUser = localStorage.getItem(USER_STORAGE_KEY);
         const storedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
 
-        if (storedUser && storedToken) {
-          const parsedUser: User = JSON.parse(storedUser);
-          setUser(parsedUser);
-
+        if (storedToken) {
           try {
             const response = await getMeApi();
-            setUser(response.user);
+            setUser(response.user as User);
             localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.user));
           } catch {
             localStorage.removeItem(USER_STORAGE_KEY);
@@ -51,7 +47,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       const response = await loginUserApi(email, password, role);
-      setUser(response.user);
+      setUser(response.user as User);
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.user));
       localStorage.setItem(TOKEN_STORAGE_KEY, response.token);
       toast.success('Successfully logged in');
@@ -73,7 +69,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       const response = await registerUserApi(name, email, password, role);
-      setUser(response.user);
+      setUser(response.user as User);
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.user));
       localStorage.setItem(TOKEN_STORAGE_KEY, response.token);
       toast.success('Account created successfully');
@@ -112,7 +108,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await logoutApi();
     } catch {
-      // ignore API logout failure, clear client session anyway
+      // ignore API logout failure
     } finally {
       setUser(null);
       localStorage.removeItem(USER_STORAGE_KEY);
@@ -122,11 +118,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateProfile = async (userId: string, updates: Partial<User>): Promise<void> => {
-  void userId;
-  void updates;
-  toast.error('Profile update API not implemented yet');
-  throw new Error('Profile update API not implemented yet');
-};
+    void userId;
+    void updates;
+    toast.error('Profile update API not implemented yet');
+    throw new Error('Profile update API not implemented yet');
+  };
 
   const value: AuthContextType = {
     user,
@@ -145,8 +141,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
+
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
+
   return context;
 };
