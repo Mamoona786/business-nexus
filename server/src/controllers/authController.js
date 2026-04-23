@@ -10,6 +10,29 @@ const formatUserResponse = (user) => ({
   role: user.role,
   avatarUrl: user.avatarUrl || '',
   bio: user.bio || '',
+  location: user.location || '',
+  preferences: user.preferences || [],
+  experience: user.experience || '',
+  interests: user.interests || [],
+  contactInfo: user.contactInfo || {
+    phone: '',
+    website: '',
+    linkedin: ''
+  },
+  startupName: user.startupName || '',
+  pitchSummary: user.pitchSummary || '',
+  fundingNeeded: user.fundingNeeded || '',
+  industry: user.industry || '',
+  foundedYear: user.foundedYear || null,
+  teamSize: user.teamSize || 1,
+  startupHistory: user.startupHistory || '',
+  investmentInterests: user.investmentInterests || [],
+  investmentStage: user.investmentStage || [],
+  portfolioCompanies: user.portfolioCompanies || [],
+  totalInvestments: user.totalInvestments || 0,
+  minimumInvestment: user.minimumInvestment || '',
+  maximumInvestment: user.maximumInvestment || '',
+  investmentHistory: user.investmentHistory || '',
   createdAt: user.createdAt
 });
 

@@ -9,6 +9,7 @@ import {
   logoutApi,
   getMeApi
 } from '../services/authService';
+import { updateMyProfileApi } from '../services/profileService';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -33,7 +34,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         const response = await getMeApi();
-        setUser(response.user as User);
+        setUser(response.user);
         localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.user));
       } catch {
         setUser(null);
@@ -51,7 +52,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       const response = await loginUserApi(email, password, role);
-      setUser(response.user as User);
+      setUser(response.user);
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.user));
       localStorage.setItem(TOKEN_STORAGE_KEY, response.token);
       toast.success('Successfully logged in');
@@ -73,7 +74,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       const response = await registerUserApi(name, email, password, role);
-      setUser(response.user as User);
+      setUser(response.user);
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.user));
       localStorage.setItem(TOKEN_STORAGE_KEY, response.token);
       toast.success('Account created successfully');
@@ -112,7 +113,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await logoutApi();
     } catch {
-      // ignore API logout failure
+      // ignore logout API failure
     } finally {
       setUser(null);
       localStorage.removeItem(USER_STORAGE_KEY);
@@ -121,11 +122,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const updateProfile = async (userId: string, updates: Partial<User>): Promise<void> => {
-    void userId;
-    void updates;
-    toast.error('Profile update API not implemented yet');
-    throw new Error('Profile update API not implemented yet');
+  const updateProfile = async (updates: Partial<User>): Promise<void> => {
+    try {
+      const response = await updateMyProfileApi(updates);
+      setUser(response.user);
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.user));
+      toast.success(response.message || 'Profile updated successfully');
+    } catch (error: any) {
+      const message = error?.response?.data?.message || 'Profile update failed';
+      toast.error(message);
+      throw new Error(message);
+    }
   };
 
   const value: AuthContextType = {

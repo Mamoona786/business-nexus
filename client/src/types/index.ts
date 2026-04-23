@@ -1,5 +1,18 @@
 export type UserRole = 'entrepreneur' | 'investor';
 
+export type CollaborationStatus =
+  | 'pending'
+  | 'accepted'
+  | 'rejected'
+  | 'in_progress'
+  | 'closed';
+
+export interface ContactInfo {
+  phone: string;
+  website: string;
+  linkedin: string;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -7,8 +20,29 @@ export interface User {
   role: UserRole;
   avatarUrl: string;
   bio: string;
+  location?: string;
+  preferences?: string[];
+  experience?: string;
+  interests?: string[];
+  contactInfo?: ContactInfo;
   isOnline?: boolean;
   createdAt: string;
+
+  startupName?: string;
+  pitchSummary?: string;
+  fundingNeeded?: string;
+  industry?: string;
+  foundedYear?: number | null;
+  teamSize?: number;
+  startupHistory?: string;
+
+  investmentInterests?: string[];
+  investmentStage?: string[];
+  portfolioCompanies?: string[];
+  totalInvestments?: number;
+  minimumInvestment?: string;
+  maximumInvestment?: string;
+  investmentHistory?: string;
 }
 
 export interface Entrepreneur extends User {
@@ -18,8 +52,9 @@ export interface Entrepreneur extends User {
   fundingNeeded: string;
   industry: string;
   location: string;
-  foundedYear: number;
+  foundedYear: number | null;
   teamSize: number;
+  startupHistory?: string;
 }
 
 export interface Investor extends User {
@@ -30,31 +65,19 @@ export interface Investor extends User {
   totalInvestments: number;
   minimumInvestment: string;
   maximumInvestment: string;
-}
-
-export interface Message {
-  id: string;
-  senderId: string;
-  receiverId: string;
-  content: string;
-  timestamp: string;
-  isRead: boolean;
-}
-
-export interface ChatConversation {
-  id: string;
-  participants: string[];
-  lastMessage?: Message;
-  updatedAt: string;
+  investmentHistory?: string;
 }
 
 export interface CollaborationRequest {
   id: string;
   investorId: string;
   entrepreneurId: string;
+  investor?: Investor;
+  entrepreneur?: Entrepreneur;
   message: string;
-  status: 'pending' | 'accepted' | 'rejected';
+  status: CollaborationStatus;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface Document {
@@ -75,7 +98,7 @@ export interface AuthContextType {
   logout: () => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
   resetPassword: (token: string, newPassword: string) => Promise<void>;
-  updateProfile: (userId: string, updates: Partial<User>) => Promise<void>;
+  updateProfile: (updates: Partial<User>) => Promise<void>;
   isAuthenticated: boolean;
   isLoading: boolean;
 }

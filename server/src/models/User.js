@@ -1,6 +1,15 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 
+const contactInfoSchema = new mongoose.Schema(
+  {
+    phone: { type: String, default: '' },
+    website: { type: String, default: '' },
+    linkedin: { type: String, default: '' }
+  },
+  { _id: false }
+);
+
 const userSchema = new mongoose.Schema(
   {
     name: {
@@ -27,6 +36,7 @@ const userSchema = new mongoose.Schema(
       enum: ['entrepreneur', 'investor'],
       required: [true, 'Role is required']
     },
+
     avatarUrl: {
       type: String,
       default: ''
@@ -35,6 +45,87 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: ''
     },
+    location: {
+      type: String,
+      default: ''
+    },
+    preferences: {
+      type: [String],
+      default: []
+    },
+    experience: {
+      type: String,
+      default: ''
+    },
+    interests: {
+      type: [String],
+      default: []
+    },
+    contactInfo: {
+      type: contactInfoSchema,
+      default: () => ({})
+    },
+
+    // Entrepreneur fields
+    startupName: {
+      type: String,
+      default: ''
+    },
+    pitchSummary: {
+      type: String,
+      default: ''
+    },
+    fundingNeeded: {
+      type: String,
+      default: ''
+    },
+    industry: {
+      type: String,
+      default: ''
+    },
+    foundedYear: {
+      type: Number,
+      default: null
+    },
+    teamSize: {
+      type: Number,
+      default: 1
+    },
+    startupHistory: {
+      type: String,
+      default: ''
+    },
+
+    // Investor fields
+    investmentInterests: {
+      type: [String],
+      default: []
+    },
+    investmentStage: {
+      type: [String],
+      default: []
+    },
+    portfolioCompanies: {
+      type: [String],
+      default: []
+    },
+    totalInvestments: {
+      type: Number,
+      default: 0
+    },
+    minimumInvestment: {
+      type: String,
+      default: ''
+    },
+    maximumInvestment: {
+      type: String,
+      default: ''
+    },
+    investmentHistory: {
+      type: String,
+      default: ''
+    },
+
     resetPasswordToken: {
       type: String,
       select: false

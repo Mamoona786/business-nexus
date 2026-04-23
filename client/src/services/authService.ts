@@ -1,37 +1,8 @@
-import axios from 'axios';
-import { UserRole } from '../types';
-
-const API = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
-  withCredentials: true,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-});
-
-API.interceptors.request.use((config) => {
-  const token = localStorage.getItem('business_nexus_token');
-
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-
-  return config;
-});
-
-export interface AuthUser {
-  id: string;
-  name: string;
-  email: string;
-  role: UserRole;
-  avatarUrl: string;
-  bio: string;
-  isOnline?: boolean;
-  createdAt: string;
-}
+import { API } from './api';
+import { User, UserRole } from '../types';
 
 export interface AuthResponse {
-  user: AuthUser;
+  user: User;
   token: string;
 }
 
@@ -88,7 +59,7 @@ export const logoutApi = async (): Promise<{ message: string }> => {
   return data;
 };
 
-export const getMeApi = async (): Promise<{ user: AuthUser }> => {
-  const { data } = await API.get<{ user: AuthUser }>('/auth/me');
+export const getMeApi = async (): Promise<{ user: User }> => {
+  const { data } = await API.get<{ user: User }>('/auth/me');
   return data;
 };

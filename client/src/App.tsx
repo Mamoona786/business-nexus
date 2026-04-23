@@ -56,11 +56,15 @@ function App() {
             </Route>
 
             <Route path="/investors" element={<DashboardLayout />}>
-              <Route index element={<InvestorsPage />} />
+              <Route element={<RoleRoute allowedRole="entrepreneur" />}>
+                <Route index element={<InvestorsPage />} />
+              </Route>
             </Route>
 
             <Route path="/entrepreneurs" element={<DashboardLayout />}>
-              <Route index element={<EntrepreneursPage />} />
+              <Route element={<RoleRoute allowedRole="investor" />}>
+                <Route index element={<EntrepreneursPage />} />
+              </Route>
             </Route>
 
             <Route path="/messages" element={<DashboardLayout />}>
