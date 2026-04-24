@@ -5,6 +5,7 @@ import authRoutes from './routes/authRoutes.js';
 import profileRoutes from './routes/profileRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import collaborationRoutes from './routes/collaborationRoutes.js';
+import messageRoutes from './routes/messageRoutes.js';
 import { notFound, errorHandler } from './middleware/errorMiddleware.js';
 
 const app = express();
@@ -28,6 +29,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/collaborations', collaborationRoutes);
+app.use('/api/messages', messageRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

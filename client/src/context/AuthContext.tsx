@@ -10,6 +10,7 @@ import {
   getMeApi
 } from '../services/authService';
 import { updateMyProfileApi } from '../services/profileService';
+import { connectSocket, disconnectSocket } from '../services/socket';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -36,10 +37,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const response = await getMeApi();
         setUser(response.user);
         localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.user));
+        connectSocket();
       } catch {
         setUser(null);
         localStorage.removeItem(USER_STORAGE_KEY);
         localStorage.removeItem(TOKEN_STORAGE_KEY);
+        disconnectSocket();
       } finally {
         setIsLoading(false);
       }
@@ -55,6 +58,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(response.user);
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.user));
       localStorage.setItem(TOKEN_STORAGE_KEY, response.token);
+      connectSocket();
       toast.success('Successfully logged in');
     } catch (error: any) {
       const message = error?.response?.data?.message || 'Login failed';
@@ -77,6 +81,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(response.user);
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.user));
       localStorage.setItem(TOKEN_STORAGE_KEY, response.token);
+      connectSocket();
       toast.success('Account created successfully');
     } catch (error: any) {
       const message = error?.response?.data?.message || 'Registration failed';
@@ -115,6 +120,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch {
       // ignore logout API failure
     } finally {
+      disconnectSocket();
       setUser(null);
       localStorage.removeItem(USER_STORAGE_KEY);
       localStorage.removeItem(TOKEN_STORAGE_KEY);

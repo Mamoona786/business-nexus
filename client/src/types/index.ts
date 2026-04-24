@@ -68,6 +68,32 @@ export interface Investor extends User {
   investmentHistory?: string;
 }
 
+export interface Message {
+  id: string;
+  senderId: string;
+  receiverId: string;
+  content: string;
+  isRead: boolean;
+  readAt?: string | null;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface ChatConversation {
+  id: string;
+  participants: string[];
+  participant: User;
+  lastMessage?: {
+    id: string;
+    senderId: string;
+    receiverId: string;
+    content: string;
+    isRead: boolean;
+    createdAt: string;
+  };
+  unreadCount: number;
+}
+
 export interface CollaborationRequest {
   id: string;
   investorId: string;
