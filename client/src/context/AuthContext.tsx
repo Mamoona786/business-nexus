@@ -58,7 +58,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(response.user);
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.user));
       localStorage.setItem(TOKEN_STORAGE_KEY, response.token);
-      connectSocket();
+      // connectSocket();
       toast.success('Successfully logged in');
     } catch (error: any) {
       const message = error?.response?.data?.message || 'Login failed';
@@ -81,10 +81,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(response.user);
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.user));
       localStorage.setItem(TOKEN_STORAGE_KEY, response.token);
-      connectSocket();
+      // connectSocket();
       toast.success('Account created successfully');
     } catch (error: any) {
-      const message = error?.response?.data?.message || 'Registration failed';
+      const message =
+  error?.response?.data?.message ||
+  error?.message ||
+  'Registration failed';
       toast.error(message);
       throw new Error(message);
     } finally {
@@ -120,7 +123,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch {
       // ignore logout API failure
     } finally {
-      disconnectSocket();
+      // disconnectSocket();
       setUser(null);
       localStorage.removeItem(USER_STORAGE_KEY);
       localStorage.removeItem(TOKEN_STORAGE_KEY);

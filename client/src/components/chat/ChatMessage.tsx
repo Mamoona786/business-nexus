@@ -1,5 +1,6 @@
 import React from 'react';
 import { formatDistanceToNow } from 'date-fns';
+import { Check, CheckCheck } from 'lucide-react';
 import { Message, User } from '../../types';
 import { Avatar } from '../ui/Avatar';
 
@@ -42,9 +43,21 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
         </div>
 
-        <span className="text-xs text-gray-500 mt-1">
-          {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}
-        </span>
+        <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
+          <span>
+            {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}
+          </span>
+
+          {isCurrentUser && (
+            <span title={message.isRead ? 'Read' : 'Delivered'}>
+              {message.isRead ? (
+                <CheckCheck size={14} className="text-primary-600" />
+              ) : (
+                <Check size={14} />
+              )}
+            </span>
+          )}
+        </div>
       </div>
 
       {isCurrentUser && (

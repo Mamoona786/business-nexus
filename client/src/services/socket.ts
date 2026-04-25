@@ -8,15 +8,17 @@ export const connectSocket = (): Socket | null => {
 
   const baseUrl = import.meta.env.VITE_API_URL.replace('/api', '');
 
-  if (!socket) {
-    socket = io(baseUrl, {
-      transports: ['websocket'],
-      withCredentials: true,
-      auth: {
-        token
-      }
-    });
+  if (socket?.connected) {
+    return socket;
   }
+
+  socket = io(baseUrl, {
+    transports: ['websocket'],
+    withCredentials: true,
+    auth: {
+      token
+    }
+  });
 
   return socket;
 };

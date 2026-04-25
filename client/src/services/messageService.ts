@@ -29,3 +29,12 @@ export const sendMessageApi = async (
   });
   return data;
 };
+
+export const getUnreadMessageCountApi = async (): Promise<{
+  unreadCount: number;
+}> => {
+  const { data } = await API.get<{ unreadCount: number }>(
+    '/messages/unread-count'
+  );
+  return data;
+};

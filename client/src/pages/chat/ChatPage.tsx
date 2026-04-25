@@ -13,7 +13,7 @@ import {
   getConversationsApi,
   sendMessageApi
 } from '../../services/messageService';
-import { getSocket } from '../../services/socket';
+import { connectSocket } from '../../services/socket';
 
 export const ChatPage: React.FC = () => {
   const { userId } = useParams<{ userId: string }>();
@@ -58,6 +58,7 @@ export const ChatPage: React.FC = () => {
       setLoadingMessages(true);
       const response = await getChatMessagesApi(userId);
       setMessages(response.messages);
+      window.dispatchEvent(new Event('messages:updated'));
       setChatPartner(response.chatPartner);
     } catch (error) {
       console.error('Failed to load chat messages', error);
@@ -87,7 +88,7 @@ export const ChatPage: React.FC = () => {
   }, [messages]);
 
   useEffect(() => {
-    const socket = getSocket();
+    const socket = connectSocket();
 
     if (!socket || !currentUser) return;
 
@@ -102,12 +103,16 @@ export const ChatPage: React.FC = () => {
       await loadConversations();
 
       if (belongsToCurrentChat) {
-        setMessages((prev) => {
-          const exists = prev.some((message) => message.id === incomingMessage.id);
-          if (exists) return prev;
-          return [...prev, incomingMessage];
-        });
-      }
+  if (incomingMessage.receiverId === currentUser.id && userId) {
+    await loadMessages(); // this marks message as read in backend
+  } else {
+    setMessages((prev) => {
+      const exists = prev.some((message) => message.id === incomingMessage.id);
+      if (exists) return prev;
+      return [...prev, incomingMessage];
+    });
+  }
+}
     };
 
     const handleMessagesRead = async () => {

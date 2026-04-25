@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import Message from '../models/Message.js';
+import Conversation from '../models/Conversation.js';
 import User from '../models/User.js';
 
 const formatUser = (user) => ({
@@ -37,14 +37,8 @@ const formatUser = (user) => ({
 
 const formatMessage = (message) => ({
   id: message._id.toString(),
-  senderId:
-    typeof message.sender === 'object' && message.sender?._id
-      ? message.sender._id.toString()
-      : message.sender.toString(),
-  receiverId:
-    typeof message.receiver === 'object' && message.receiver?._id
-      ? message.receiver._id.toString()
-      : message.receiver.toString(),
+  senderId: message.sender.toString(),
+  receiverId: message.receiver.toString(),
   content: message.content,
   isRead: message.isRead,
   readAt: message.readAt,
@@ -52,9 +46,14 @@ const formatMessage = (message) => ({
   updatedAt: message.updatedAt
 });
 
+const getParticipantIds = (userA, userB) => [
+  new mongoose.Types.ObjectId(userA),
+  new mongoose.Types.ObjectId(userB)
+];
+
 export const sendMessage = async (req, res, next) => {
   try {
-    const senderId = req.user._id;
+    const senderId = req.user._id.toString();
     const { receiverId, content } = req.body;
 
     if (!receiverId || !content?.trim()) {
@@ -67,7 +66,7 @@ export const sendMessage = async (req, res, next) => {
       throw new Error('Invalid receiver id');
     }
 
-    if (senderId.toString() === receiverId) {
+    if (senderId === receiverId) {
       res.status(400);
       throw new Error('You cannot send a message to yourself');
     }
@@ -79,22 +78,52 @@ export const sendMessage = async (req, res, next) => {
       throw new Error('Receiver not found');
     }
 
-    const message = await Message.create({
+    const messageData = {
       sender: senderId,
       receiver: receiverId,
-      content: content.trim()
+      content: content.trim(),
+      isRead: false,
+      readAt: null
+    };
+
+    let conversation = await Conversation.findOne({
+      participants: {
+        $all: getParticipantIds(senderId, receiverId),
+        $size: 2
+      }
     });
 
-    const populatedMessage = await Message.findById(message._id)
-      .populate('sender', 'name email role avatarUrl')
-      .populate('receiver', 'name email role avatarUrl');
+    if (!conversation) {
+      conversation = await Conversation.create({
+        participants: getParticipantIds(senderId, receiverId),
+        messages: [messageData],
+        lastMessage: {
+          sender: senderId,
+          receiver: receiverId,
+          content: content.trim(),
+          isRead: false,
+          createdAt: new Date()
+        }
+      });
+    } else {
+      conversation.messages.push(messageData);
+      conversation.lastMessage = {
+        sender: senderId,
+        receiver: receiverId,
+        content: content.trim(),
+        isRead: false,
+        createdAt: new Date()
+      };
+      await conversation.save();
+    }
 
-    const formattedMessage = formatMessage(populatedMessage);
+    const newMessage = conversation.messages[conversation.messages.length - 1];
+    const formattedMessage = formatMessage(newMessage);
 
     const io = req.app.get('io');
 
     if (io) {
-      io.to(`user:${senderId.toString()}`).emit('message:new', formattedMessage);
+      io.to(`user:${senderId}`).emit('message:new', formattedMessage);
       io.to(`user:${receiverId}`).emit('message:new', formattedMessage);
     }
 
@@ -123,52 +152,53 @@ export const getChatMessages = async (req, res, next) => {
       throw new Error('Chat user not found');
     }
 
-    const messages = await Message.find({
-      $or: [
-        { sender: currentUserId, receiver: otherUserId },
-        { sender: otherUserId, receiver: currentUserId }
-      ]
-    })
-      .sort({ createdAt: 1 })
-      .populate('sender', 'name email role avatarUrl')
-      .populate('receiver', 'name email role avatarUrl');
+    const conversation = await Conversation.findOne({
+      participants: {
+        $all: getParticipantIds(currentUserId, otherUserId),
+        $size: 2
+      }
+    });
 
-    await Message.updateMany(
-      {
-        sender: otherUserId,
-        receiver: currentUserId,
-        isRead: false
-      },
-      {
-        $set: {
-          isRead: true,
-          readAt: new Date()
+    let readUpdated = false;
+
+    if (conversation) {
+      conversation.messages.forEach((message) => {
+        if (
+          message.sender.toString() === otherUserId &&
+          message.receiver.toString() === currentUserId &&
+          !message.isRead
+        ) {
+          message.isRead = true;
+          message.readAt = new Date();
+          readUpdated = true;
+        }
+      });
+
+      if (
+        conversation.lastMessage?.receiver?.toString() === currentUserId &&
+        conversation.lastMessage?.sender?.toString() === otherUserId &&
+        conversation.lastMessage?.isRead === false
+      ) {
+        conversation.lastMessage.isRead = true;
+      }
+
+      if (readUpdated) {
+        await conversation.save();
+
+        const io = req.app.get('io');
+
+        if (io) {
+          io.to(`user:${otherUserId}`).emit('messages:read', {
+            byUserId: currentUserId,
+            conversationWithUserId: otherUserId
+          });
         }
       }
-    );
-
-    const refreshedMessages = await Message.find({
-      $or: [
-        { sender: currentUserId, receiver: otherUserId },
-        { sender: otherUserId, receiver: currentUserId }
-      ]
-    })
-      .sort({ createdAt: 1 })
-      .populate('sender', 'name email role avatarUrl')
-      .populate('receiver', 'name email role avatarUrl');
-
-    const io = req.app.get('io');
-
-    if (io) {
-      io.to(`user:${otherUserId}`).emit('messages:read', {
-        byUserId: currentUserId,
-        conversationWithUserId: otherUserId
-      });
     }
 
     res.status(200).json({
       chatPartner: formatUser(otherUser),
-      messages: refreshedMessages.map(formatMessage)
+      messages: conversation ? conversation.messages.map(formatMessage) : []
     });
   } catch (error) {
     next(error);
@@ -179,105 +209,72 @@ export const getConversations = async (req, res, next) => {
   try {
     const currentUserId = req.user._id.toString();
 
-    const conversations = await Message.aggregate([
-      {
-        $match: {
-          $or: [
-            { sender: new mongoose.Types.ObjectId(currentUserId) },
-            { receiver: new mongoose.Types.ObjectId(currentUserId) }
-          ]
-        }
-      },
-      { $sort: { createdAt: -1 } },
-      {
-        $addFields: {
-          otherParticipant: {
-            $cond: [
-              { $eq: ['$sender', new mongoose.Types.ObjectId(currentUserId)] },
-              '$receiver',
-              '$sender'
-            ]
-          }
-        }
-      },
-      {
-        $group: {
-          _id: '$otherParticipant',
-          lastMessageId: { $first: '$_id' },
-          lastMessageContent: { $first: '$content' },
-          lastMessageCreatedAt: { $first: '$createdAt' },
-          lastMessageSender: { $first: '$sender' },
-          lastMessageReceiver: { $first: '$receiver' },
-          lastMessageIsRead: { $first: '$isRead' },
-          unreadCount: {
-            $sum: {
-              $cond: [
-                {
-                  $and: [
-                    { $eq: ['$receiver', new mongoose.Types.ObjectId(currentUserId)] },
-                    { $eq: ['$isRead', false] }
-                  ]
-                },
-                1,
-                0
-              ]
-            }
-          }
-        }
-      },
-      {
-        $lookup: {
-          from: 'users',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'participant'
-        }
-      },
-      {
-        $unwind: '$participant'
-      },
-      {
-        $project: {
-          _id: 0,
-          id: { $toString: '$lastMessageId' },
-          participant: '$participant',
-          unreadCount: 1,
-          lastMessage: {
-            id: { $toString: '$lastMessageId' },
-            senderId: { $toString: '$lastMessageSender' },
-            receiverId: { $toString: '$lastMessageReceiver' },
-            content: '$lastMessageContent',
-            isRead: '$lastMessageIsRead',
-            createdAt: '$lastMessageCreatedAt'
-          }
-        }
-      },
-      {
-        $sort: {
-          'lastMessage.createdAt': -1
-        }
-      }
-    ]);
+    const conversations = await Conversation.find({
+      participants: currentUserId
+    })
+      .populate('participants', 'name email role avatarUrl bio location preferences experience interests contactInfo startupName pitchSummary fundingNeeded industry foundedYear teamSize startupHistory investmentInterests investmentStage portfolioCompanies totalInvestments minimumInvestment maximumInvestment investmentHistory createdAt')
+      .sort({ updatedAt: -1 });
 
     const onlineUsers = req.app.get('onlineUsers') || new Map();
 
     const formattedConversations = conversations.map((conversation) => {
-      const participant = conversation.participant;
+      const participant = conversation.participants.find(
+        (user) => user._id.toString() !== currentUserId
+      );
+
+      const unreadCount = conversation.messages.filter(
+        (message) =>
+          message.receiver.toString() === currentUserId && !message.isRead
+      ).length;
 
       return {
-        id: conversation.id,
-        participants: [currentUserId, participant._id.toString()],
+        id: conversation._id.toString(),
+        participants: conversation.participants.map((user) => user._id.toString()),
         participant: {
           ...formatUser(participant),
           isOnline: onlineUsers.has(participant._id.toString())
         },
-        lastMessage: conversation.lastMessage,
-        unreadCount: conversation.unreadCount
+        lastMessage: conversation.lastMessage
+          ? {
+              id: conversation._id.toString(),
+              senderId: conversation.lastMessage.sender?.toString(),
+              receiverId: conversation.lastMessage.receiver?.toString(),
+              content: conversation.lastMessage.content,
+              isRead: conversation.lastMessage.isRead,
+              createdAt: conversation.lastMessage.createdAt
+            }
+          : null,
+        unreadCount
       };
     });
 
     res.status(200).json({
       conversations: formattedConversations
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getUnreadMessageCount = async (req, res, next) => {
+  try {
+    const currentUserId = req.user._id.toString();
+
+    const conversations = await Conversation.find({
+      participants: currentUserId
+    });
+
+    const unreadCount = conversations.reduce((total, conversation) => {
+      const count = conversation.messages.filter(
+        (message) =>
+          message.receiver.toString() === currentUserId && !message.isRead
+      ).length;
+
+      return total + count;
+    }, 0);
+
+    res.status(200).json({
+      unreadCount
     });
   } catch (error) {
     next(error);

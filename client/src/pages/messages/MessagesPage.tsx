@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { ChatUserList } from '../../components/chat/ChatUserList';
 import { ChatConversation } from '../../types';
 import { getConversationsApi } from '../../services/messageService';
-import { getSocket } from '../../services/socket';
+import { connectSocket } from '../../services/socket';
 import { MessageCircle } from 'lucide-react';
 
 export const MessagesPage: React.FC = () => {
@@ -29,7 +29,7 @@ export const MessagesPage: React.FC = () => {
   }, [user]);
 
   useEffect(() => {
-    const socket = getSocket();
+    const socket = connectSocket();
 
     if (!socket) return;
 
