@@ -23,6 +23,7 @@ const startServer = async () => {
   });
 
   const onlineUsers = new Map();
+  const callRooms = new Map();
 
   app.set('io', io);
   app.set('onlineUsers', onlineUsers);
@@ -59,9 +60,96 @@ const startServer = async () => {
 
     io.emit('users:online', Array.from(onlineUsers.keys()));
 
+    socket.on('call:join-room', ({ roomId }) => {
+      if (!roomId) return;
+
+      socket.join(`call:${roomId}`);
+
+      const existingUsers = callRooms.get(roomId) || [];
+      const otherUsers = existingUsers.filter((item) => item.socketId !== socket.id);
+
+      callRooms.set(roomId, [
+        ...otherUsers,
+        {
+          socketId: socket.id,
+          userId,
+          name: socket.user.name
+        }
+      ]);
+
+      socket.emit('call:existing-users', otherUsers);
+
+      socket.to(`call:${roomId}`).emit('call:user-joined', {
+        socketId: socket.id,
+        userId,
+        name: socket.user.name
+      });
+    });
+
+    socket.on('call:offer', ({ to, offer }) => {
+      if (!to || !offer) return;
+      io.to(to).emit('call:offer', {
+        from: socket.id,
+        offer,
+        userId,
+        name: socket.user.name
+      });
+    });
+
+    socket.on('call:answer', ({ to, answer }) => {
+      if (!to || !answer) return;
+      io.to(to).emit('call:answer', {
+        from: socket.id,
+        answer
+      });
+    });
+
+    socket.on('call:ice-candidate', ({ to, candidate }) => {
+      if (!to || !candidate) return;
+      io.to(to).emit('call:ice-candidate', {
+        from: socket.id,
+        candidate
+      });
+    });
+
+    socket.on('call:leave-room', ({ roomId }) => {
+      if (!roomId) return;
+
+      socket.leave(`call:${roomId}`);
+
+      const users = callRooms.get(roomId) || [];
+      const updatedUsers = users.filter((item) => item.socketId !== socket.id);
+
+      if (updatedUsers.length > 0) {
+        callRooms.set(roomId, updatedUsers);
+      } else {
+        callRooms.delete(roomId);
+      }
+
+      socket.to(`call:${roomId}`).emit('call:user-left', {
+        socketId: socket.id,
+        userId
+      });
+    });
+
     socket.on('disconnect', () => {
       onlineUsers.delete(userId);
       io.emit('users:online', Array.from(onlineUsers.keys()));
+
+      callRooms.forEach((users, roomId) => {
+        const updatedUsers = users.filter((item) => item.socketId !== socket.id);
+
+        if (updatedUsers.length > 0) {
+          callRooms.set(roomId, updatedUsers);
+        } else {
+          callRooms.delete(roomId);
+        }
+
+        socket.to(`call:${roomId}`).emit('call:user-left', {
+          socketId: socket.id,
+          userId
+        });
+      });
     });
   });
 
