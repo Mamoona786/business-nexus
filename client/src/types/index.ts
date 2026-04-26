@@ -129,7 +129,6 @@ export interface AuthContextType {
   isLoading: boolean;
 }
 
-
 export type MeetingStatus =
   | 'pending'
   | 'accepted'
@@ -137,23 +136,23 @@ export type MeetingStatus =
   | 'cancelled'
   | 'rescheduled';
 
-export type MeetingType = 'video' | 'audio' | 'in_person' | 'other';
+export type MeetingType = 'video' | 'audio' | 'in_person';
 
 export interface Meeting {
   id: string;
   title: string;
-  organizer: User;
-  participants: User[];
+  createdBy: User | string;
+  participants: User[] | string[];
   date: string;
   startTime: string;
   endTime: string;
+  startDateTime: string;
+  endDateTime: string;
   meetingType: MeetingType;
   status: MeetingStatus;
   notes?: string;
   meetingLink?: string;
   roomId?: string;
-  rejectedBy?: string | null;
-  cancelledBy?: string | null;
   createdAt: string;
   updatedAt?: string;
 }

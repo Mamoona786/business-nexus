@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Send, Phone, Video, Info, Smile, MessageCircle } from 'lucide-react';
 import { Avatar } from '../../components/ui/Avatar';
 import { Button } from '../../components/ui/Button';
@@ -16,6 +16,7 @@ import {
 import { connectSocket } from '../../services/socket';
 
 export const ChatPage: React.FC = () => {
+  const navigate = useNavigate();
   const { userId } = useParams<{ userId: string }>();
   const { user: currentUser } = useAuth();
 
@@ -196,13 +197,14 @@ export const ChatPage: React.FC = () => {
                 </Button>
 
                 <Button
-                  variant="ghost"
-                  size="sm"
-                  className="rounded-full p-2"
-                  aria-label="Video call"
-                >
-                  <Video size={18} />
-                </Button>
+  variant="ghost"
+  size="sm"
+  className="rounded-full p-2"
+  aria-label="Video call"
+  onClick={() => navigate('/meetings')}
+>
+  <Video size={18} />
+</Button>
 
                 <Button
                   variant="ghost"

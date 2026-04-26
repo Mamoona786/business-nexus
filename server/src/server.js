@@ -52,7 +52,7 @@ const startServer = async () => {
     }
   });
 
-  io.on('connection', (socket) => {
+    io.on('connection', (socket) => {
     const userId = socket.user._id.toString();
 
     onlineUsers.set(userId, socket.id);
@@ -60,96 +60,56 @@ const startServer = async () => {
 
     io.emit('users:online', Array.from(onlineUsers.keys()));
 
-    socket.on('call:join-room', ({ roomId }) => {
+    socket.on('video:join-room', ({ roomId }) => {
       if (!roomId) return;
 
-      socket.join(`call:${roomId}`);
+      socket.join(roomId);
 
-      const existingUsers = callRooms.get(roomId) || [];
-      const otherUsers = existingUsers.filter((item) => item.socketId !== socket.id);
-
-      callRooms.set(roomId, [
-        ...otherUsers,
-        {
-          socketId: socket.id,
-          userId,
-          name: socket.user.name
-        }
-      ]);
-
-      socket.emit('call:existing-users', otherUsers);
-
-      socket.to(`call:${roomId}`).emit('call:user-joined', {
-        socketId: socket.id,
+      socket.to(roomId).emit('video:user-joined', {
         userId,
+        socketId: socket.id,
         name: socket.user.name
       });
     });
 
-    socket.on('call:offer', ({ to, offer }) => {
-      if (!to || !offer) return;
-      io.to(to).emit('call:offer', {
-        from: socket.id,
+    socket.on('video:offer', ({ roomId, offer }) => {
+      socket.to(roomId).emit('video:offer', {
         offer,
+        from: socket.id,
         userId,
         name: socket.user.name
       });
     });
 
-    socket.on('call:answer', ({ to, answer }) => {
-      if (!to || !answer) return;
-      io.to(to).emit('call:answer', {
+    socket.on('video:answer', ({ roomId, answer }) => {
+      socket.to(roomId).emit('video:answer', {
+        answer,
         from: socket.id,
-        answer
+        userId,
+        name: socket.user.name
       });
     });
 
-    socket.on('call:ice-candidate', ({ to, candidate }) => {
-      if (!to || !candidate) return;
-      io.to(to).emit('call:ice-candidate', {
-        from: socket.id,
-        candidate
+    socket.on('video:ice-candidate', ({ roomId, candidate }) => {
+      socket.to(roomId).emit('video:ice-candidate', {
+        candidate,
+        from: socket.id
       });
     });
 
-    socket.on('call:leave-room', ({ roomId }) => {
+    socket.on('video:leave-room', ({ roomId }) => {
       if (!roomId) return;
 
-      socket.leave(`call:${roomId}`);
-
-      const users = callRooms.get(roomId) || [];
-      const updatedUsers = users.filter((item) => item.socketId !== socket.id);
-
-      if (updatedUsers.length > 0) {
-        callRooms.set(roomId, updatedUsers);
-      } else {
-        callRooms.delete(roomId);
-      }
-
-      socket.to(`call:${roomId}`).emit('call:user-left', {
-        socketId: socket.id,
-        userId
+      socket.leave(roomId);
+      socket.to(roomId).emit('video:user-left', {
+        userId,
+        socketId: socket.id
       });
     });
 
     socket.on('disconnect', () => {
       onlineUsers.delete(userId);
       io.emit('users:online', Array.from(onlineUsers.keys()));
-
-      callRooms.forEach((users, roomId) => {
-        const updatedUsers = users.filter((item) => item.socketId !== socket.id);
-
-        if (updatedUsers.length > 0) {
-          callRooms.set(roomId, updatedUsers);
-        } else {
-          callRooms.delete(roomId);
-        }
-
-        socket.to(`call:${roomId}`).emit('call:user-left', {
-          socketId: socket.id,
-          userId
-        });
-      });
     });
   });
 

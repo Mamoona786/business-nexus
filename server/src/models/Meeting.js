@@ -6,9 +6,9 @@ const meetingSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Meeting title is required'],
       trim: true,
-      maxlength: 150
+      maxlength: 120
     },
-    organizer: {
+    createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true
@@ -32,9 +32,17 @@ const meetingSchema = new mongoose.Schema(
       type: String,
       required: [true, 'End time is required']
     },
+    startDateTime: {
+      type: Date,
+      required: true
+    },
+    endDateTime: {
+      type: Date,
+      required: true
+    },
     meetingType: {
       type: String,
-      enum: ['video', 'audio', 'in_person', 'other'],
+      enum: ['video', 'audio', 'in_person'],
       default: 'video'
     },
     status: {
@@ -54,23 +62,12 @@ const meetingSchema = new mongoose.Schema(
     roomId: {
       type: String,
       default: ''
-    },
-    rejectedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      default: null
-    },
-    cancelledBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      default: null
     }
   },
   { timestamps: true }
 );
 
-meetingSchema.index({ organizer: 1, date: 1 });
-meetingSchema.index({ participants: 1, date: 1 });
+meetingSchema.index({ participants: 1, startDateTime: 1, endDateTime: 1 });
 
 const Meeting = mongoose.model('Meeting', meetingSchema);
 

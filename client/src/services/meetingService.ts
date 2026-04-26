@@ -1,60 +1,58 @@
 import { API } from './api';
-import { Meeting, MeetingType } from '../types';
+import { Meeting } from '../types';
 
-export interface CreateMeetingPayload {
+export interface ScheduleMeetingPayload {
   title: string;
-  participants: string[];
+  participantIds: string[];
   date: string;
   startTime: string;
   endTime: string;
-  meetingType: MeetingType;
+  meetingType: 'video' | 'audio' | 'in_person';
   notes?: string;
 }
 
-export interface RescheduleMeetingPayload {
-  date?: string;
-  startTime?: string;
-  endTime?: string;
-  notes?: string;
-}
-
-export const getMyMeetingsApi = async (): Promise<{ meetings: Meeting[] }> => {
+export const getMeetingsApi = async (): Promise<{ meetings: Meeting[] }> => {
   const { data } = await API.get('/meetings');
   return data;
 };
 
-export const createMeetingApi = async (
-  payload: CreateMeetingPayload
-): Promise<{ meeting: Meeting }> => {
+export const scheduleMeetingApi = async (
+  payload: ScheduleMeetingPayload
+): Promise<{ message: string; meeting: Meeting }> => {
   const { data } = await API.post('/meetings', payload);
   return data;
 };
 
 export const acceptMeetingApi = async (
   meetingId: string
-): Promise<{ meeting: Meeting }> => {
+): Promise<{ message: string; meeting: Meeting }> => {
   const { data } = await API.patch(`/meetings/${meetingId}/accept`);
   return data;
 };
 
 export const rejectMeetingApi = async (
   meetingId: string
-): Promise<{ meeting: Meeting }> => {
+): Promise<{ message: string; meeting: Meeting }> => {
   const { data } = await API.patch(`/meetings/${meetingId}/reject`);
   return data;
 };
 
 export const cancelMeetingApi = async (
   meetingId: string
-): Promise<{ meeting: Meeting }> => {
+): Promise<{ message: string; meeting: Meeting }> => {
   const { data } = await API.patch(`/meetings/${meetingId}/cancel`);
   return data;
 };
 
 export const rescheduleMeetingApi = async (
   meetingId: string,
-  payload: RescheduleMeetingPayload
-): Promise<{ meeting: Meeting }> => {
+  payload: {
+    date?: string;
+    startTime?: string;
+    endTime?: string;
+    notes?: string;
+  }
+): Promise<{ message: string; meeting: Meeting }> => {
   const { data } = await API.patch(`/meetings/${meetingId}/reschedule`, payload);
   return data;
 };
