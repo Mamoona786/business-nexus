@@ -1,76 +1,171 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
-import { Send, Phone, Video, Info, Smile } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Send, Phone, Video, Info, Smile, MessageCircle } from 'lucide-react';
 import { Avatar } from '../../components/ui/Avatar';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { ChatMessage } from '../../components/chat/ChatMessage';
 import { ChatUserList } from '../../components/chat/ChatUserList';
 import { useAuth } from '../../context/AuthContext';
-import { Message } from '../../types';
-import { findUserById } from '../../data/users';
-import { getMessagesBetweenUsers, sendMessage, getConversationsForUser } from '../../data/messages';
-import { MessageCircle } from 'lucide-react';
+import { ChatConversation, Message, User } from '../../types';
+import {
+  getChatMessagesApi,
+  getConversationsApi,
+  sendMessageApi
+} from '../../services/messageService';
+import { connectSocket } from '../../services/socket';
 
 export const ChatPage: React.FC = () => {
+  const navigate = useNavigate();
   const { userId } = useParams<{ userId: string }>();
   const { user: currentUser } = useAuth();
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [conversations, setConversations] = useState<any[]>([]);
+  const [conversations, setConversations] = useState<ChatConversation[]>([]);
+  const [chatPartner, setChatPartner] = useState<User | null>(null);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [sending, setSending] = useState(false);
+
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
-  
-  const chatPartner = userId ? findUserById(userId) : null;
-  
-  useEffect(() => {
-    // Load conversations
-    if (currentUser) {
-      setConversations(getConversationsForUser(currentUser.id));
+
+  const loadConversations = async () => {
+    try {
+      const response = await getConversationsApi();
+      setConversations(response.conversations);
+
+      if (userId) {
+        const activeConversation = response.conversations.find(
+          (conversation) => conversation.participant.id === userId
+        );
+
+        if (activeConversation) {
+          setChatPartner(activeConversation.participant);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load conversations', error);
     }
-  }, [currentUser]);
-  
+  };
+
+  const loadMessages = async () => {
+    if (!userId) {
+      setMessages([]);
+      setChatPartner(null);
+      return;
+    }
+
+    try {
+      setLoadingMessages(true);
+      const response = await getChatMessagesApi(userId);
+      setMessages(response.messages);
+      window.dispatchEvent(new Event('messages:updated'));
+      setChatPartner(response.chatPartner);
+    } catch (error) {
+      console.error('Failed to load chat messages', error);
+      setMessages([]);
+    } finally {
+      setLoadingMessages(false);
+    }
+  };
+
   useEffect(() => {
-    // Load messages between users
-    if (currentUser && userId) {
-      setMessages(getMessagesBetweenUsers(currentUser.id, userId));
+    if (currentUser) {
+      loadConversations();
     }
   }, [currentUser, userId]);
-  
+
   useEffect(() => {
-    // Scroll to bottom of messages
+    if (currentUser && userId) {
+      loadMessages();
+    } else {
+      setMessages([]);
+      setChatPartner(null);
+    }
+  }, [currentUser, userId]);
+
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-  
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!newMessage.trim() || !currentUser || !userId) return;
-    
-    const message = sendMessage({
-      senderId: currentUser.id,
-      receiverId: userId,
-      content: newMessage
+
+  useEffect(() => {
+    const socket = connectSocket();
+
+    if (!socket || !currentUser) return;
+
+    const handleNewMessage = async (incomingMessage: Message) => {
+      const belongsToCurrentChat =
+        userId &&
+        ((incomingMessage.senderId === userId &&
+          incomingMessage.receiverId === currentUser.id) ||
+          (incomingMessage.senderId === currentUser.id &&
+            incomingMessage.receiverId === userId));
+
+      await loadConversations();
+
+      if (belongsToCurrentChat) {
+  if (incomingMessage.receiverId === currentUser.id && userId) {
+    await loadMessages(); // this marks message as read in backend
+  } else {
+    setMessages((prev) => {
+      const exists = prev.some((message) => message.id === incomingMessage.id);
+      if (exists) return prev;
+      return [...prev, incomingMessage];
     });
-    
-    setMessages([...messages, message]);
-    setNewMessage('');
-    
-    // Update conversations
-    setConversations(getConversationsForUser(currentUser.id));
+  }
+}
+    };
+
+    const handleMessagesRead = async () => {
+      await loadConversations();
+
+      if (userId) {
+        await loadMessages();
+      }
+    };
+
+    const handleUsersOnline = async () => {
+      await loadConversations();
+    };
+
+    socket.on('message:new', handleNewMessage);
+    socket.on('messages:read', handleMessagesRead);
+    socket.on('users:online', handleUsersOnline);
+
+    return () => {
+      socket.off('message:new', handleNewMessage);
+      socket.off('messages:read', handleMessagesRead);
+      socket.off('users:online', handleUsersOnline);
+    };
+  }, [currentUser, userId]);
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!newMessage.trim() || !currentUser || !userId || sending) return;
+
+    try {
+      setSending(true);
+      const response = await sendMessageApi(userId, newMessage.trim());
+      setMessages((prev) => [...prev, response.message]);
+      setNewMessage('');
+      await loadConversations();
+    } catch (error) {
+      console.error('Failed to send message', error);
+    } finally {
+      setSending(false);
+    }
   };
-  
+
   if (!currentUser) return null;
-  
+
   return (
     <div className="flex h-[calc(100vh-4rem)] bg-white border border-gray-200 rounded-lg overflow-hidden animate-fade-in">
-      {/* Conversations sidebar */}
       <div className="hidden md:block w-1/3 lg:w-1/4 border-r border-gray-200">
         <ChatUserList conversations={conversations} />
       </div>
-      
-      {/* Main chat area */}
+
       <div className="flex-1 flex flex-col">
-        {/* Chat header */}
         {chatPartner ? (
           <>
             <div className="border-b border-gray-200 p-4 flex justify-between items-center">
@@ -82,15 +177,15 @@ export const ChatPage: React.FC = () => {
                   status={chatPartner.isOnline ? 'online' : 'offline'}
                   className="mr-3"
                 />
-                
+
                 <div>
                   <h2 className="text-lg font-medium text-gray-900">{chatPartner.name}</h2>
                   <p className="text-sm text-gray-500">
-                    {chatPartner.isOnline ? 'Online' : 'Last seen recently'}
+                    {chatPartner.isOnline ? 'Online' : 'Offline'}
                   </p>
                 </div>
               </div>
-              
+
               <div className="flex space-x-2">
                 <Button
                   variant="ghost"
@@ -100,16 +195,17 @@ export const ChatPage: React.FC = () => {
                 >
                   <Phone size={18} />
                 </Button>
-                
+
                 <Button
-                  variant="ghost"
-                  size="sm"
-                  className="rounded-full p-2"
-                  aria-label="Video call"
-                >
-                  <Video size={18} />
-                </Button>
-                
+  variant="ghost"
+  size="sm"
+  className="rounded-full p-2"
+  aria-label="Video call"
+  onClick={() => navigate('/meetings')}
+>
+  <Video size={18} />
+</Button>
+
                 <Button
                   variant="ghost"
                   size="sm"
@@ -120,16 +216,21 @@ export const ChatPage: React.FC = () => {
                 </Button>
               </div>
             </div>
-            
-            {/* Messages container */}
+
             <div className="flex-1 p-4 overflow-y-auto bg-gray-50">
-              {messages.length > 0 ? (
+              {loadingMessages ? (
+                <div className="h-full flex items-center justify-center text-gray-500">
+                  Loading messages...
+                </div>
+              ) : messages.length > 0 ? (
                 <div className="space-y-4">
-                  {messages.map(message => (
+                  {messages.map((message) => (
                     <ChatMessage
                       key={message.id}
                       message={message}
                       isCurrentUser={message.senderId === currentUser.id}
+                      sender={chatPartner}
+                      currentUser={currentUser}
                     />
                   ))}
                   <div ref={messagesEndRef} />
@@ -140,12 +241,13 @@ export const ChatPage: React.FC = () => {
                     <MessageCircle size={32} className="text-gray-400" />
                   </div>
                   <h3 className="text-lg font-medium text-gray-700">No messages yet</h3>
-                  <p className="text-gray-500 mt-1">Send a message to start the conversation</p>
+                  <p className="text-gray-500 mt-1">
+                    Send a message to start the conversation
+                  </p>
                 </div>
               )}
             </div>
-            
-            {/* Message input */}
+
             <div className="border-t border-gray-200 p-4">
               <form onSubmit={handleSendMessage} className="flex space-x-2">
                 <Button
@@ -157,7 +259,7 @@ export const ChatPage: React.FC = () => {
                 >
                   <Smile size={20} />
                 </Button>
-                
+
                 <Input
                   type="text"
                   placeholder="Type a message..."
@@ -166,11 +268,11 @@ export const ChatPage: React.FC = () => {
                   fullWidth
                   className="flex-1"
                 />
-                
+
                 <Button
                   type="submit"
                   size="sm"
-                  disabled={!newMessage.trim()}
+                  disabled={!newMessage.trim() || sending}
                   className="rounded-full p-2 w-10 h-10 flex items-center justify-center"
                   aria-label="Send message"
                 >

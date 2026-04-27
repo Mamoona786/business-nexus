@@ -9,6 +9,8 @@ import {
   logoutApi,
   getMeApi
 } from '../services/authService';
+import { updateMyProfileApi } from '../services/profileService';
+import { connectSocket, disconnectSocket } from '../services/socket';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -16,29 +18,31 @@ const USER_STORAGE_KEY = 'business_nexus_user';
 const TOKEN_STORAGE_KEY = 'business_nexus_token';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    const storedUser = localStorage.getItem(USER_STORAGE_KEY);
+    return storedUser ? JSON.parse(storedUser) : null;
+  });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const initialiseAuth = async () => {
       try {
-        const storedUser = localStorage.getItem(USER_STORAGE_KEY);
         const storedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
 
-        if (storedUser && storedToken) {
-          const parsedUser: User = JSON.parse(storedUser);
-          setUser(parsedUser);
-
-          try {
-            const response = await getMeApi();
-            setUser(response.user);
-            localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.user));
-          } catch {
-            localStorage.removeItem(USER_STORAGE_KEY);
-            localStorage.removeItem(TOKEN_STORAGE_KEY);
-            setUser(null);
-          }
+        if (!storedToken) {
+          setUser(null);
+          return;
         }
+
+        const response = await getMeApi();
+        setUser(response.user);
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.user));
+        connectSocket();
+      } catch {
+        setUser(null);
+        localStorage.removeItem(USER_STORAGE_KEY);
+        localStorage.removeItem(TOKEN_STORAGE_KEY);
+        disconnectSocket();
       } finally {
         setIsLoading(false);
       }
@@ -54,6 +58,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(response.user);
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.user));
       localStorage.setItem(TOKEN_STORAGE_KEY, response.token);
+      connectSocket();
       toast.success('Successfully logged in');
     } catch (error: any) {
       const message = error?.response?.data?.message || 'Login failed';
@@ -76,9 +81,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(response.user);
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.user));
       localStorage.setItem(TOKEN_STORAGE_KEY, response.token);
+      connectSocket();
       toast.success('Account created successfully');
     } catch (error: any) {
-      const message = error?.response?.data?.message || 'Registration failed';
+      const message =
+  error?.response?.data?.message ||
+  error?.message ||
+  'Registration failed';
       toast.error(message);
       throw new Error(message);
     } finally {
@@ -112,8 +121,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await logoutApi();
     } catch {
-      // ignore API logout failure, clear client session anyway
+      // ignore logout API failure
     } finally {
+      disconnectSocket();
       setUser(null);
       localStorage.removeItem(USER_STORAGE_KEY);
       localStorage.removeItem(TOKEN_STORAGE_KEY);
@@ -121,12 +131,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const updateProfile = async (userId: string, updates: Partial<User>): Promise<void> => {
-  void userId;
-  void updates;
-  toast.error('Profile update API not implemented yet');
-  throw new Error('Profile update API not implemented yet');
-};
+  const updateProfile = async (updates: Partial<User>): Promise<void> => {
+    try {
+      const response = await updateMyProfileApi(updates);
+      setUser(response.user);
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.user));
+      toast.success(response.message || 'Profile updated successfully');
+    } catch (error: any) {
+      const message = error?.response?.data?.message || 'Profile update failed';
+      toast.error(message);
+      throw new Error(message);
+    }
+  };
 
   const value: AuthContextType = {
     user,
@@ -145,8 +161,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
+
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
+
   return context;
 };
