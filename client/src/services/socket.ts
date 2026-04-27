@@ -4,20 +4,18 @@ let socket: Socket | null = null;
 
 export const connectSocket = (): Socket | null => {
   const token = localStorage.getItem('business_nexus_token');
+
   if (!token) return null;
 
-  const baseUrl = import.meta.env.VITE_API_URL.replace('/api', '');
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  const baseUrl = apiUrl.replace('/api', '');
 
-  if (socket?.connected) {
-    return socket;
-  }
+  if (socket?.connected) return socket;
 
   socket = io(baseUrl, {
     transports: ['websocket'],
     withCredentials: true,
-    auth: {
-      token
-    }
+    auth: { token }
   });
 
   return socket;

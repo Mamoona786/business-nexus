@@ -1,6 +1,7 @@
 import express from 'express';
 import { protect } from '../middleware/authMiddleware.js';
 import {
+  getAllUsers,
   getInvestors,
   getEntrepreneurs,
   getUserById
@@ -8,6 +9,7 @@ import {
 
 const router = express.Router();
 
+router.get('/', protect, getAllUsers);
 router.get('/investors', protect, getInvestors);
 router.get('/entrepreneurs', protect, getEntrepreneurs);
 router.get('/:id', protect, getUserById);

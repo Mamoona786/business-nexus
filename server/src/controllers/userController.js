@@ -33,6 +33,20 @@ const formatUser = (user) => ({
   createdAt: user.createdAt
 });
 
+export const getAllUsers = async (req, res, next) => {
+  try {
+    const users = await User.find({
+      _id: { $ne: req.user._id }
+    }).sort({ createdAt: -1 });
+
+    res.status(200).json({
+      users: users.map(formatUser)
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getInvestors = async (req, res, next) => {
   try {
     const { search = '', stage = '', interest = '' } = req.query;

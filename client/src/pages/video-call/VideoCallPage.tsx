@@ -11,8 +11,12 @@ export const VideoCallPage: React.FC = () => {
 
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
+
   const localStreamRef = useRef<MediaStream | null>(null);
+  const remoteStreamRef = useRef<MediaStream>(new MediaStream());
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
+  const startedRef = useRef(false);
 
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [videoEnabled, setVideoEnabled] = useState(true);
@@ -20,10 +24,18 @@ export const VideoCallPage: React.FC = () => {
 
   const createPeerConnection = () => {
     const socket = getSocket();
+
     if (!socket || !roomId) return null;
 
+    if (peerConnectionRef.current) {
+      return peerConnectionRef.current;
+    }
+
     const pc = new RTCPeerConnection({
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' }
+      ]
     });
 
     pc.onicecandidate = (event) => {
@@ -36,12 +48,33 @@ export const VideoCallPage: React.FC = () => {
     };
 
     pc.ontrack = (event) => {
-      const [remoteStream] = event.streams;
+      event.streams[0].getTracks().forEach((track) => {
+        remoteStreamRef.current.addTrack(track);
+      });
+
       if (remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = remoteStream;
+        remoteVideoRef.current.srcObject = remoteStreamRef.current;
       }
+
       setConnected(true);
     };
+
+    pc.oniceconnectionstatechange = () => {
+  if (
+    pc.iceConnectionState === 'connected' ||
+    pc.iceConnectionState === 'completed'
+  ) {
+    setConnected(true);
+  }
+
+  if (
+    pc.iceConnectionState === 'disconnected' ||
+    pc.iceConnectionState === 'failed' ||
+    pc.iceConnectionState === 'closed'
+  ) {
+    setConnected(false);
+  }
+};
 
     localStreamRef.current?.getTracks().forEach((track) => {
       pc.addTrack(track, localStreamRef.current as MediaStream);
@@ -51,15 +84,29 @@ export const VideoCallPage: React.FC = () => {
     return pc;
   };
 
+  const addPendingIceCandidates = async () => {
+    const pc = peerConnectionRef.current;
+
+    if (!pc || !pc.remoteDescription) return;
+
+    for (const candidate of pendingCandidatesRef.current) {
+      await pc.addIceCandidate(new RTCIceCandidate(candidate));
+    }
+
+    pendingCandidatesRef.current = [];
+  };
+
   useEffect(() => {
-    if (!roomId) return;
+    if (!roomId || startedRef.current) return;
+
+    startedRef.current = true;
 
     const setupCall = async () => {
       try {
         const socket = connectSocket();
 
         if (!socket) {
-          toast.error('Socket connection failed');
+          toast.error('Socket connection failed. Please login again.');
           return;
         }
 
@@ -74,26 +121,34 @@ export const VideoCallPage: React.FC = () => {
           localVideoRef.current.srcObject = stream;
         }
 
-        socket.emit('video:join-room', { roomId });
 
-        socket.on('video:user-joined', async () => {
-          const pc = createPeerConnection();
-          if (!pc) return;
+        socket.on('video:room-users', async (users) => {
+  if (!users.length) return;
 
-          const offer = await pc.createOffer();
-          await pc.setLocalDescription(offer);
+  const pc = createPeerConnection();
+  if (!pc) return;
 
-          socket.emit('video:offer', {
-            roomId,
-            offer
-          });
-        });
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+
+  socket.emit('video:offer', {
+    roomId,
+    offer
+  });
+});
+
+        socket.on('video:user-joined', async (data) => {
+  console.log('USER JOINED:', data);
+});
 
         socket.on('video:offer', async ({ offer }) => {
           const pc = createPeerConnection();
+
           if (!pc) return;
 
           await pc.setRemoteDescription(new RTCSessionDescription(offer));
+
+          await addPendingIceCandidates();
 
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
@@ -106,25 +161,38 @@ export const VideoCallPage: React.FC = () => {
 
         socket.on('video:answer', async ({ answer }) => {
           const pc = peerConnectionRef.current;
+
           if (!pc) return;
 
           await pc.setRemoteDescription(new RTCSessionDescription(answer));
+
+          await addPendingIceCandidates();
         });
 
         socket.on('video:ice-candidate', async ({ candidate }) => {
           const pc = peerConnectionRef.current;
-          if (!pc || !candidate) return;
 
-          await pc.addIceCandidate(new RTCIceCandidate(candidate));
+          if (!candidate) return;
+
+          if (pc && pc.remoteDescription) {
+            await pc.addIceCandidate(new RTCIceCandidate(candidate));
+          } else {
+            pendingCandidatesRef.current.push(candidate);
+          }
         });
 
         socket.on('video:user-left', () => {
           setConnected(false);
+
           if (remoteVideoRef.current) {
             remoteVideoRef.current.srcObject = null;
           }
+
+          remoteStreamRef.current = new MediaStream();
           toast('Other user left the call');
         });
+
+        socket.emit('video:join-room', { roomId });
       } catch (error) {
         console.error(error);
         toast.error('Camera or microphone permission failed');
@@ -138,11 +206,12 @@ export const VideoCallPage: React.FC = () => {
 
       if (socket && roomId) {
         socket.emit('video:leave-room', { roomId });
-        socket.off('video:user-joined');
-        socket.off('video:offer');
-        socket.off('video:answer');
-        socket.off('video:ice-candidate');
-        socket.off('video:user-left');
+        socket.off('video:room-users');
+socket.off('video:user-joined');
+socket.off('video:offer');
+socket.off('video:answer');
+socket.off('video:ice-candidate');
+socket.off('video:user-left');
       }
 
       peerConnectionRef.current?.close();
@@ -150,6 +219,10 @@ export const VideoCallPage: React.FC = () => {
 
       localStreamRef.current?.getTracks().forEach((track) => track.stop());
       localStreamRef.current = null;
+
+      remoteStreamRef.current = new MediaStream();
+      pendingCandidatesRef.current = [];
+      startedRef.current = false;
     };
   }, [roomId]);
 
@@ -192,7 +265,7 @@ export const VideoCallPage: React.FC = () => {
       </div>
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 p-4">
-        <div className="relative bg-black rounded-lg overflow-hidden">
+        <div className="relative bg-black rounded-lg overflow-hidden min-h-[300px]">
           <video
             ref={localVideoRef}
             autoPlay
@@ -200,21 +273,26 @@ export const VideoCallPage: React.FC = () => {
             playsInline
             className="w-full h-full object-cover"
           />
+
           <div className="absolute bottom-3 left-3 bg-black/60 text-white text-sm px-3 py-1 rounded-full">
             You
           </div>
         </div>
 
-        <div className="relative bg-black rounded-lg overflow-hidden flex items-center justify-center">
+        <div className="relative bg-black rounded-lg overflow-hidden flex items-center justify-center min-h-[300px]">
           <video
             ref={remoteVideoRef}
             autoPlay
             playsInline
             className="w-full h-full object-cover"
           />
+
           {!connected && (
-            <p className="absolute text-gray-300">Waiting for other participant...</p>
+            <p className="absolute text-gray-300">
+              Waiting for other participant...
+            </p>
           )}
+
           <div className="absolute bottom-3 left-3 bg-black/60 text-white text-sm px-3 py-1 rounded-full">
             Remote User
           </div>
@@ -222,19 +300,11 @@ export const VideoCallPage: React.FC = () => {
       </div>
 
       <div className="p-4 bg-gray-800 flex justify-center gap-3">
-        <Button
-          variant="outline"
-          onClick={toggleAudio}
-          className="rounded-full"
-        >
+        <Button variant="outline" onClick={toggleAudio} className="rounded-full">
           {audioEnabled ? <Mic size={18} /> : <MicOff size={18} />}
         </Button>
 
-        <Button
-          variant="outline"
-          onClick={toggleVideo}
-          className="rounded-full"
-        >
+        <Button variant="outline" onClick={toggleVideo} className="rounded-full">
           {videoEnabled ? <Video size={18} /> : <VideoOff size={18} />}
         </Button>
 

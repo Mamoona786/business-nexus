@@ -106,15 +106,39 @@ export interface CollaborationRequest {
   updatedAt?: string;
 }
 
+export type DocumentStatus =
+  | 'draft'
+  | 'pending_review'
+  | 'approved'
+  | 'rejected'
+  | 'signed';
+
+export interface DocumentVersion {
+  version: number;
+  fileUrl: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  uploadedBy: string;
+  uploadedAt: string;
+}
+
 export interface Document {
-  id: string;
-  name: string;
-  type: string;
-  size: string;
-  lastModified: string;
-  shared: boolean;
-  url: string;
-  ownerId: string;
+  _id?: string;
+  id?: string;
+  title: string;
+  fileUrl: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  uploadedBy: User | string;
+  relatedUsers: string[];
+  version: number;
+  versions: DocumentVersion[];
+  status: DocumentStatus;
+  signatureUrl?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AuthContextType {

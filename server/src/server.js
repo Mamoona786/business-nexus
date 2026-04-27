@@ -61,16 +61,34 @@ const startServer = async () => {
     io.emit('users:online', Array.from(onlineUsers.keys()));
 
     socket.on('video:join-room', ({ roomId }) => {
-      if (!roomId) return;
+  if (!roomId) return;
 
-      socket.join(roomId);
+  socket.join(roomId);
 
-      socket.to(roomId).emit('video:user-joined', {
-        userId,
-        socketId: socket.id,
-        name: socket.user.name
-      });
-    });
+  if (!callRooms.has(roomId)) {
+    callRooms.set(roomId, new Set());
+  }
+
+  const roomUsers = callRooms.get(roomId);
+
+  const existingUsers = Array.from(roomUsers).filter(
+    (item) => item.socketId !== socket.id
+  );
+
+  socket.emit('video:room-users', existingUsers);
+
+  roomUsers.add({
+    userId,
+    socketId: socket.id,
+    name: socket.user.name
+  });
+
+  socket.to(roomId).emit('video:user-joined', {
+    userId,
+    socketId: socket.id,
+    name: socket.user.name
+  });
+});
 
     socket.on('video:offer', ({ roomId, offer }) => {
       socket.to(roomId).emit('video:offer', {
@@ -108,9 +126,27 @@ const startServer = async () => {
     });
 
     socket.on('disconnect', () => {
-      onlineUsers.delete(userId);
-      io.emit('users:online', Array.from(onlineUsers.keys()));
+  onlineUsers.delete(userId);
+
+  callRooms.forEach((users, roomId) => {
+    users.forEach((item) => {
+      if (item.socketId === socket.id) {
+        users.delete(item);
+
+        socket.to(roomId).emit('video:user-left', {
+          userId,
+          socketId: socket.id
+        });
+      }
     });
+
+    if (users.size === 0) {
+      callRooms.delete(roomId);
+    }
+  });
+
+  io.emit('users:online', Array.from(onlineUsers.keys()));
+});
   });
 
   httpServer.listen(PORT, () => {
