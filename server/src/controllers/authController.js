@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import User from '../models/User.js';
 import generateToken from '../utils/generateToken.js';
 import sendEmail from '../utils/sendEmail.js';
@@ -55,19 +56,38 @@ const clearTokenCookie = (res) => {
   });
 };
 
+const generateOtp = () => {
+  return crypto.randomInt(100000, 999999).toString();
+};
+
+const hashOtp = (otp) => {
+  return crypto.createHash('sha256').update(otp).digest('hex');
+};
+
+const sendOtpEmail = async (user, otp) => {
+  const text = `Your Business Nexus login OTP is ${otp}. It expires in 10 minutes.`;
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+      <h2>Business Nexus Login Verification</h2>
+      <p>Your OTP code is:</p>
+      <h1 style="letter-spacing: 4px;">${otp}</h1>
+      <p>This code expires in 10 minutes.</p>
+      <p>If you did not request this login, please ignore this email.</p>
+    </div>
+  `;
+
+  await sendEmail({
+    to: user.email,
+    subject: 'Business Nexus Login OTP',
+    text,
+    html
+  });
+};
+
 export const registerUser = async (req, res, next) => {
   try {
     const { name, email, password, role } = req.body;
-
-    if (!name || !email || !password || !role) {
-      res.status(400);
-      throw new Error('Please provide name, email, password and role');
-    }
-
-    if (!['entrepreneur', 'investor'].includes(role)) {
-      res.status(400);
-      throw new Error('Invalid role selected');
-    }
 
     const existingUser = await User.findOne({ email: email.toLowerCase() });
 
@@ -83,7 +103,7 @@ export const registerUser = async (req, res, next) => {
       role
     });
 
-    const token = generateToken(user._id);
+    const token = generateToken(user._id, user.role);
     setTokenCookie(res, token);
 
     res.status(201).json({
@@ -99,12 +119,9 @@ export const loginUser = async (req, res, next) => {
   try {
     const { email, password, role } = req.body;
 
-    if (!email || !password || !role) {
-      res.status(400);
-      throw new Error('Please provide email, password and role');
-    }
-
-    const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
+    const user = await User.findOne({ email: email.toLowerCase() }).select(
+      '+password +twoFactorOtp +twoFactorOtpExpire'
+    );
 
     if (!user) {
       res.status(401);
@@ -123,7 +140,49 @@ export const loginUser = async (req, res, next) => {
       throw new Error('Invalid email or password');
     }
 
-    const token = generateToken(user._id);
+    const otp = generateOtp();
+
+    user.twoFactorOtp = hashOtp(otp);
+    user.twoFactorOtpExpire = Date.now() + 10 * 60 * 1000;
+    user.twoFactorOtpVerified = false;
+
+    await user.save({ validateBeforeSave: false });
+    await sendOtpEmail(user, otp);
+
+    res.status(200).json({
+      requiresOtp: true,
+      message: 'OTP has been sent to your email',
+      email: user.email,
+      role: user.role
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const verifyLoginOtp = async (req, res, next) => {
+  try {
+    const { email, otp, role } = req.body;
+
+    const user = await User.findOne({
+      email: email.toLowerCase(),
+      role,
+      twoFactorOtp: hashOtp(otp),
+      twoFactorOtpExpire: { $gt: Date.now() }
+    }).select('+twoFactorOtp +twoFactorOtpExpire');
+
+    if (!user) {
+      res.status(400);
+      throw new Error('Invalid or expired OTP');
+    }
+
+    user.twoFactorOtp = undefined;
+    user.twoFactorOtpExpire = undefined;
+    user.twoFactorOtpVerified = true;
+
+    await user.save({ validateBeforeSave: false });
+
+    const token = generateToken(user._id, user.role);
     setTokenCookie(res, token);
 
     res.status(200).json({
@@ -161,11 +220,6 @@ export const forgotPassword = async (req, res, next) => {
   try {
     const { email } = req.body;
 
-    if (!email) {
-      res.status(400);
-      throw new Error('Email is required');
-    }
-
     const user = await User.findOne({ email: email.toLowerCase() }).select(
       '+resetPasswordToken +resetPasswordExpire'
     );
@@ -185,12 +239,11 @@ export const forgotPassword = async (req, res, next) => {
 
     const resetUrl = `${process.env.CLIENT_URL}/reset-password?token=${resetToken}`;
 
-    const text = `You requested a password reset. Please use the following link: ${resetUrl}. This link expires in 10 minutes.`;
+    const text = `You requested a password reset. Please use this link: ${resetUrl}. This link expires in 10 minutes.`;
 
     const html = `
       <div style="font-family: Arial, sans-serif; line-height: 1.6;">
         <h2>Reset your Business Nexus password</h2>
-        <p>You requested a password reset.</p>
         <p>Click the link below to set a new password:</p>
         <p><a href="${resetUrl}" target="_blank">${resetUrl}</a></p>
         <p>This link expires in 10 minutes.</p>
@@ -216,16 +269,6 @@ export const resetPassword = async (req, res, next) => {
   try {
     const { token } = req.params;
     const { password } = req.body;
-
-    if (!token) {
-      res.status(400);
-      throw new Error('Reset token is required');
-    }
-
-    if (!password || password.length < 6) {
-      res.status(400);
-      throw new Error('Password must be at least 6 characters');
-    }
 
     const hashedToken = hashToken(token);
 

@@ -6,6 +6,13 @@ export interface AuthResponse {
   token: string;
 }
 
+export interface LoginOtpResponse {
+  requiresOtp: boolean;
+  message: string;
+  email: string;
+  role: UserRole;
+}
+
 export const registerUserApi = async (
   name: string,
   email: string,
@@ -25,10 +32,23 @@ export const loginUserApi = async (
   email: string,
   password: string,
   role: UserRole
-): Promise<AuthResponse> => {
-  const { data } = await API.post<AuthResponse>('/auth/login', {
+): Promise<LoginOtpResponse> => {
+  const { data } = await API.post<LoginOtpResponse>('/auth/login', {
     email,
     password,
+    role
+  });
+  return data;
+};
+
+export const verifyLoginOtpApi = async (
+  email: string,
+  otp: string,
+  role: UserRole
+): Promise<AuthResponse> => {
+  const { data } = await API.post<AuthResponse>('/auth/verify-otp', {
+    email,
+    otp,
     role
   });
   return data;

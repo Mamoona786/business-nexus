@@ -3,9 +3,9 @@ import bcrypt from 'bcryptjs';
 
 const contactInfoSchema = new mongoose.Schema(
   {
-    phone: { type: String, default: '' },
-    website: { type: String, default: '' },
-    linkedin: { type: String, default: '' }
+    phone: { type: String, default: '', trim: true },
+    website: { type: String, default: '', trim: true },
+    linkedin: { type: String, default: '', trim: true }
   },
   { _id: false }
 );
@@ -15,7 +15,8 @@ const userSchema = new mongoose.Schema(
     name: {
       type: String,
       required: [true, 'Name is required'],
-      trim: true
+      trim: true,
+      maxlength: [50, 'Name cannot exceed 50 characters']
     },
     email: {
       type: String,
@@ -28,7 +29,7 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       required: [true, 'Password is required'],
-      minlength: [6, 'Password must be at least 6 characters'],
+      minlength: [8, 'Password must be at least 8 characters'],
       select: false
     },
     role: {
@@ -37,93 +38,61 @@ const userSchema = new mongoose.Schema(
       required: [true, 'Role is required']
     },
 
-    avatarUrl: {
-      type: String,
-      default: ''
-    },
-    bio: {
-      type: String,
-      default: ''
-    },
-    location: {
-      type: String,
-      default: ''
-    },
-    preferences: {
-      type: [String],
-      default: []
-    },
-    experience: {
-      type: String,
-      default: ''
-    },
-    interests: {
-      type: [String],
-      default: []
-    },
+    avatarUrl: { type: String, default: '', trim: true },
+    bio: { type: String, default: '', trim: true, maxlength: 1000 },
+    location: { type: String, default: '', trim: true },
+    preferences: { type: [String], default: [] },
+    experience: { type: String, default: '', trim: true },
+    interests: { type: [String], default: [] },
     contactInfo: {
       type: contactInfoSchema,
       default: () => ({})
     },
 
-    // Entrepreneur fields
-    startupName: {
-      type: String,
-      default: ''
-    },
-    pitchSummary: {
-      type: String,
-      default: ''
-    },
-    fundingNeeded: {
-      type: String,
-      default: ''
-    },
-    industry: {
-      type: String,
-      default: ''
-    },
-    foundedYear: {
-      type: Number,
-      default: null
-    },
-    teamSize: {
-      type: Number,
-      default: 1
-    },
-    startupHistory: {
-      type: String,
-      default: ''
-    },
+    startupName: { type: String, default: '', trim: true },
+    pitchSummary: { type: String, default: '', trim: true },
+    fundingNeeded: { type: String, default: '', trim: true },
+    industry: { type: String, default: '', trim: true },
+    foundedYear: { type: Number, default: null },
+    teamSize: { type: Number, default: 1 },
+    startupHistory: { type: String, default: '', trim: true },
 
-    // Investor fields
-    investmentInterests: {
-      type: [String],
-      default: []
-    },
-    investmentStage: {
-      type: [String],
-      default: []
-    },
-    portfolioCompanies: {
-      type: [String],
-      default: []
-    },
-    totalInvestments: {
+    investmentInterests: { type: [String], default: [] },
+    investmentStage: { type: [String], default: [] },
+    portfolioCompanies: { type: [String], default: [] },
+    totalInvestments: { type: Number, default: 0 },
+    minimumInvestment: { type: String, default: '', trim: true },
+    maximumInvestment: { type: String, default: '', trim: true },
+    investmentHistory: { type: String, default: '', trim: true },
+
+    walletBalance: {
       type: Number,
       default: 0
     },
-    minimumInvestment: {
-      type: String,
-      default: ''
+
+        notificationPreferences: {
+      email: { type: Boolean, default: true },
+      inApp: { type: Boolean, default: true },
+      messages: { type: Boolean, default: true },
+      meetings: { type: Boolean, default: true },
+      documents: { type: Boolean, default: true },
+      payments: { type: Boolean, default: true },
+      collaborations: { type: Boolean, default: true }
     },
-    maximumInvestment: {
-      type: String,
-      default: ''
+
+    privacySettings: {
+      profileVisibility: {
+        type: String,
+        enum: ['public', 'private'],
+        default: 'public'
+      },
+      showEmail: { type: Boolean, default: false },
+      showOnlineStatus: { type: Boolean, default: true }
     },
-    investmentHistory: {
-      type: String,
-      default: ''
+
+    twoFactorEnabled: {
+      type: Boolean,
+      default: false
     },
 
     resetPasswordToken: {
@@ -133,6 +102,19 @@ const userSchema = new mongoose.Schema(
     resetPasswordExpire: {
       type: Date,
       select: false
+    },
+
+    twoFactorOtp: {
+      type: String,
+      select: false
+    },
+    twoFactorOtpExpire: {
+      type: Date,
+      select: false
+    },
+    twoFactorOtpVerified: {
+      type: Boolean,
+      default: false
     }
   },
   {
@@ -145,7 +127,7 @@ userSchema.pre('save', async function (next) {
     return next();
   }
 
-  const salt = await bcrypt.genSalt(10);
+  const salt = await bcrypt.genSalt(12);
   this.password = await bcrypt.hash(this.password, salt);
   next();
 });

@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import Conversation from '../models/Conversation.js';
 import User from '../models/User.js';
+import { createNotification } from '../utils/notificationHelper.js';
 
 const formatUser = (user) => ({
   id: user._id.toString(),
@@ -114,6 +115,7 @@ export const sendMessage = async (req, res, next) => {
         isRead: false,
         createdAt: new Date()
       };
+
       await conversation.save();
     }
 
@@ -126,6 +128,18 @@ export const sendMessage = async (req, res, next) => {
       io.to(`user:${senderId}`).emit('message:new', formattedMessage);
       io.to(`user:${receiverId}`).emit('message:new', formattedMessage);
     }
+
+    await createNotification({
+      req,
+      recipient: receiverId,
+      sender: senderId,
+      type: 'message',
+      title: 'New message',
+      message: `${req.user.name} sent you a message.`,
+      link: `/chat/${senderId}`,
+      entityId: conversation._id,
+      entityType: 'Conversation'
+    });
 
     res.status(201).json({
       message: formattedMessage
@@ -212,7 +226,10 @@ export const getConversations = async (req, res, next) => {
     const conversations = await Conversation.find({
       participants: currentUserId
     })
-      .populate('participants', 'name email role avatarUrl bio location preferences experience interests contactInfo startupName pitchSummary fundingNeeded industry foundedYear teamSize startupHistory investmentInterests investmentStage portfolioCompanies totalInvestments minimumInvestment maximumInvestment investmentHistory createdAt')
+      .populate(
+        'participants',
+        'name email role avatarUrl bio location preferences experience interests contactInfo startupName pitchSummary fundingNeeded industry foundedYear teamSize startupHistory investmentInterests investmentStage portfolioCompanies totalInvestments minimumInvestment maximumInvestment investmentHistory createdAt'
+      )
       .sort({ updatedAt: -1 });
 
     const onlineUsers = req.app.get('onlineUsers') || new Map();

@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import Meeting from '../models/Meeting.js';
 import User from '../models/User.js';
+import { createNotification } from '../utils/notificationHelper.js';
 
 const buildDateTime = (date, time) => new Date(`${date}T${time}:00`);
 
@@ -122,6 +123,21 @@ export const scheduleMeeting = async (req, res, next) => {
       meetingLink,
       status: 'pending'
     });
+     await Promise.all(
+      cleanParticipantIds.map((id) =>
+        createNotification({
+          req,
+          recipient: id,
+          sender: req.user._id,
+          type: 'meeting',
+          title: 'New meeting invite',
+          message: `${req.user.name} invited you to a meeting: ${title}`,
+          link: '/meetings',
+          entityId: meeting._id,
+          entityType: 'Meeting'
+        })
+      )
+    );
 
     const io = req.app.get('io');
 
@@ -191,6 +207,20 @@ export const acceptMeeting = async (req, res, next) => {
     meeting.status = 'accepted';
     await meeting.save();
 
+        if (meeting.createdBy.toString() !== currentUserId) {
+      await createNotification({
+        req,
+        recipient: meeting.createdBy,
+        sender: req.user._id,
+        type: 'meeting',
+        title: 'Meeting accepted',
+        message: `${req.user.name} accepted your meeting invite.`,
+        link: '/meetings',
+        entityId: meeting._id,
+        entityType: 'Meeting'
+      });
+    }
+
     const io = req.app.get('io');
 
     if (io) {
@@ -227,6 +257,20 @@ export const rejectMeeting = async (req, res, next) => {
 
     meeting.status = 'rejected';
     await meeting.save();
+
+        if (meeting.createdBy.toString() !== currentUserId) {
+      await createNotification({
+        req,
+        recipient: meeting.createdBy,
+        sender: req.user._id,
+        type: 'meeting',
+        title: 'Meeting rejected',
+        message: `${req.user.name} rejected your meeting invite.`,
+        link: '/meetings',
+        entityId: meeting._id,
+        entityType: 'Meeting'
+      });
+    }
 
     const io = req.app.get('io');
 

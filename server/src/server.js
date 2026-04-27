@@ -38,7 +38,10 @@ const startServer = async () => {
         return next(new Error('Not authorised, no token provided'));
       }
 
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET, {
+  issuer: 'business-nexus',
+  audience: 'business-nexus-users'
+});
       const user = await User.findById(decoded.userId).select('-password');
 
       if (!user) {

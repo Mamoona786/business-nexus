@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import {
   registerUserApi,
   loginUserApi,
+  verifyLoginOtpApi,
   forgotPasswordApi,
   resetPasswordApi,
   logoutApi,
@@ -52,23 +53,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (email: string, password: string, role: UserRole): Promise<void> => {
-    setIsLoading(true);
-    try {
-      const response = await loginUserApi(email, password, role);
-      setUser(response.user);
-      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.user));
-      localStorage.setItem(TOKEN_STORAGE_KEY, response.token);
-      connectSocket();
-      toast.success('Successfully logged in');
-    } catch (error: any) {
-      const message = error?.response?.data?.message || 'Login failed';
-      toast.error(message);
-      throw new Error(message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  setIsLoading(true);
 
+  try {
+    await loginUserApi(email, password, role);
+    toast.success('OTP sent to your email');
+  } catch (error: any) {
+    const message = error?.response?.data?.message || 'Login failed';
+    toast.error(message);
+    throw new Error(message);
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+  const verifyLoginOtp = async (
+  email: string,
+  otp: string,
+  role: UserRole
+): Promise<void> => {
+  setIsLoading(true);
+
+  try {
+    const response = await verifyLoginOtpApi(email, otp, role);
+
+    setUser(response.user);
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.user));
+    localStorage.setItem(TOKEN_STORAGE_KEY, response.token);
+
+    connectSocket();
+    toast.success('Successfully logged in');
+  } catch (error: any) {
+    const message = error?.response?.data?.message || 'OTP verification failed';
+    toast.error(message);
+    throw new Error(message);
+  } finally {
+    setIsLoading(false);
+  }
+};
   const register = async (
     name: string,
     email: string,
@@ -146,6 +168,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const value: AuthContextType = {
     user,
+    verifyLoginOtp,
     login,
     register,
     logout,

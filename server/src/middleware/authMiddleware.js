@@ -19,7 +19,10 @@ export const protect = async (req, res, next) => {
       throw new Error('Not authorised, no token provided');
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET, {
+      issuer: 'business-nexus',
+      audience: 'business-nexus-users'
+    });
 
     const user = await User.findById(decoded.userId).select('-password');
 
@@ -30,7 +33,7 @@ export const protect = async (req, res, next) => {
 
     req.user = user;
     next();
-  } catch (error) {
+  } catch {
     res.status(401);
     next(new Error('Not authorised, invalid token'));
   }

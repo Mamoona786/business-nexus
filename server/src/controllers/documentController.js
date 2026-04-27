@@ -1,4 +1,5 @@
 import Document from '../models/Document.js';
+import { createNotification } from '../utils/notificationHelper.js';
 
 const buildFileUrl = (req, folder, filename) => {
   return `${req.protocol}://${req.get('host')}/uploads/${folder}/${filename}`;
@@ -34,7 +35,17 @@ export const uploadDocument = async (req, res, next) => {
         }
       ]
     });
-
+    await createNotification({
+      req,
+      recipient: req.user._id,
+      sender: req.user._id,
+      type: 'document',
+      title: 'Document uploaded',
+      message: `${document.title} was uploaded successfully.`,
+      link: '/documents',
+      entityId: document._id,
+      entityType: 'Document'
+    });
     res.status(201).json(document);
   } catch (error) {
     next(error);
@@ -139,6 +150,18 @@ export const updateDocumentStatus = async (req, res, next) => {
 
     document.status = status;
     await document.save();
+
+        await createNotification({
+      req,
+      recipient: req.user._id,
+      sender: req.user._id,
+      type: 'document',
+      title: 'Document status updated',
+      message: `${document.title} status changed to ${status}.`,
+      link: '/documents',
+      entityId: document._id,
+      entityType: 'Document'
+    });
 
     res.json(document);
   } catch (error) {

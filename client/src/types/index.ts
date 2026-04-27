@@ -43,6 +43,10 @@ export interface User {
   minimumInvestment?: string;
   maximumInvestment?: string;
   investmentHistory?: string;
+  walletBalance?: number;
+    notificationPreferences?: NotificationPreferences;
+  privacySettings?: PrivacySettings;
+  twoFactorEnabled?: boolean;
 }
 
 export interface Entrepreneur extends User {
@@ -144,7 +148,13 @@ export interface Document {
 export interface AuthContextType {
   user: User | null;
   login: (email: string, password: string, role: UserRole) => Promise<void>;
-  register: (name: string, email: string, password: string, role: UserRole) => Promise<void>;
+  verifyLoginOtp: (email: string, otp: string, role: UserRole) => Promise<void>;
+  register: (
+    name: string,
+    email: string,
+    password: string,
+    role: UserRole
+  ) => Promise<void>;
   logout: () => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
   resetPassword: (token: string, newPassword: string) => Promise<void>;
@@ -179,4 +189,64 @@ export interface Meeting {
   roomId?: string;
   createdAt: string;
   updatedAt?: string;
+}
+export type PaymentStatus = 'Pending' | 'Completed' | 'Failed';
+
+export type TransactionType = 'deposit' | 'withdraw' | 'transfer';
+
+export interface Transaction {
+  id: string;
+  userId: string;
+  fromUserId?: string | null;
+  toUserId?: string | null;
+  type: TransactionType;
+  amount: number;
+  currency: string;
+  status: PaymentStatus;
+  stripeSessionId?: string;
+  stripePaymentIntentId?: string;
+  description?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export type NotificationType =
+  | 'collaboration'
+  | 'meeting'
+  | 'document'
+  | 'payment'
+  | 'message'
+  | 'system'
+  | 'support';
+
+export interface AppNotification {
+  id: string;
+  recipient: string;
+  sender?: User | null;
+  type: NotificationType;
+  title: string;
+  message: string;
+  link?: string;
+  entityId?: string | null;
+  entityType?: string;
+  isRead: boolean;
+  readAt?: string | null;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface NotificationPreferences {
+  email: boolean;
+  inApp: boolean;
+  messages: boolean;
+  meetings: boolean;
+  documents: boolean;
+  payments: boolean;
+  collaborations: boolean;
+}
+
+export interface PrivacySettings {
+  profileVisibility: 'public' | 'private';
+  showEmail: boolean;
+  showOnlineStatus: boolean;
 }

@@ -15,13 +15,28 @@ import { Avatar } from '../ui/Avatar';
 import { Button } from '../ui/Button';
 import { getUnreadMessageCountApi } from '../../services/messageService';
 import { connectSocket } from '../../services/socket';
+import { getUnreadNotificationCountApi } from '../../services/notificationService';
 
 export const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
-
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+
+  const loadUnreadNotifications = async () => {
+  if (!user) {
+    setUnreadNotifications(0);
+    return;
+  }
+
+  try {
+    const response = await getUnreadNotificationCountApi();
+    setUnreadNotifications(response.unreadCount);
+  } catch (error) {
+    console.error('Failed to load unread notifications', error);
+  }
+};
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -53,6 +68,7 @@ export const Navbar: React.FC = () => {
   }
 
   loadUnreadMessages();
+    loadUnreadNotifications();
 
   const socket = connectSocket();
 
@@ -66,11 +82,15 @@ export const Navbar: React.FC = () => {
 
   socket.on('message:new', loadUnreadMessages);
   socket.on('messages:read', loadUnreadMessages);
+    socket.on('notification:new', loadUnreadNotifications);
+  window.addEventListener('notifications:updated', loadUnreadNotifications);
 
   return () => {
     socket.off('message:new', loadUnreadMessages);
     socket.off('messages:read', loadUnreadMessages);
     window.removeEventListener('messages:updated', loadUnreadMessages);
+        socket.off('notification:new', loadUnreadNotifications);
+    window.removeEventListener('notifications:updated', loadUnreadNotifications);
   };
 }, [user]);
 
@@ -261,6 +281,12 @@ export const Navbar: React.FC = () => {
                           {unreadMessages > 99 ? '99+' : unreadMessages}
                         </span>
                       )}
+
+                      {link.text === 'Notifications' && unreadNotifications > 0 && (
+  <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] min-w-[17px] h-[17px] rounded-full flex items-center justify-center px-1 leading-none">
+    {unreadNotifications > 99 ? '99+' : unreadNotifications}
+  </span>
+)}
                     </Link>
                   ))}
 

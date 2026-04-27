@@ -1,5 +1,6 @@
 import CollaborationRequest from '../models/CollaborationRequest.js';
 import User from '../models/User.js';
+import { createNotification } from '../utils/notificationHelper.js';
 
 const formatUser = (user) => ({
   id: user._id.toString(),
@@ -80,6 +81,18 @@ export const sendCollaborationRequest = async (req, res, next) => {
       .populate('investorId')
       .populate('entrepreneurId');
 
+          await createNotification({
+      req,
+      recipient: entrepreneurId,
+      sender: req.user._id,
+      type: 'collaboration',
+      title: 'New collaboration request',
+      message: `${req.user.name} sent you a collaboration request.`,
+      link: '/deals',
+      entityId: request._id,
+      entityType: 'CollaborationRequest'
+    });
+
     res.status(201).json({
       message: 'Collaboration request sent successfully',
       request: formatRequest(populatedRequest)
@@ -156,6 +169,20 @@ export const updateCollaborationStatus = async (req, res, next) => {
     const populatedRequest = await CollaborationRequest.findById(request._id)
       .populate('investorId')
       .populate('entrepreneurId');
+
+          const recipientId = isEntrepreneur ? request.investorId : request.entrepreneurId;
+
+    await createNotification({
+      req,
+      recipient: recipientId,
+      sender: req.user._id,
+      type: 'collaboration',
+      title: 'Collaboration status updated',
+      message: `${req.user.name} updated collaboration status to ${status}.`,
+      link: '/deals',
+      entityId: request._id,
+      entityType: 'CollaborationRequest'
+    });
 
     res.status(200).json({
       message: 'Request status updated successfully',

@@ -18,8 +18,23 @@ export const errorHandler = (err, req, res, next) => {
     message = 'A user with this email already exists';
   }
 
+  if (err.name === 'JsonWebTokenError') {
+    statusCode = 401;
+    message = 'Invalid token';
+  }
+
+  if (err.name === 'TokenExpiredError') {
+    statusCode = 401;
+    message = 'Token expired';
+  }
+
+  if (process.env.NODE_ENV === 'production' && statusCode === 500) {
+    message = 'Something went wrong. Please try again later.';
+  }
+
   res.status(statusCode).json({
+    success: false,
     message,
-    stack: process.env.NODE_ENV === 'production' ? null : err.stack
+    stack: process.env.NODE_ENV === 'production' ? undefined : err.stack
   });
 };

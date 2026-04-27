@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
   Home, Building2, CircleDollarSign, Users, MessageCircle,
-  Bell, FileText, Settings, HelpCircle, Calendar
+  Bell, FileText, Settings, HelpCircle, Calendar, CreditCard
 } from 'lucide-react';
 
 interface SidebarItemProps {
@@ -44,6 +44,7 @@ export const Sidebar: React.FC = () => {
     { to: '/meetings', icon: <Calendar size={20} />, text: 'Meetings' },
     { to: '/notifications', icon: <Bell size={20} />, text: 'Notifications' },
     { to: '/documents', icon: <FileText size={20} />, text: 'Documents' },
+    { to: '/payments', icon: <CreditCard size={20} />, text: 'Payments' },
   ];
 
   const investorItems = [
@@ -55,6 +56,7 @@ export const Sidebar: React.FC = () => {
   { to: '/notifications', icon: <Bell size={20} />, text: 'Notifications' },
   { to: '/documents', icon: <FileText size={20} />, text: 'Documents' },
   { to: '/deals', icon: <FileText size={20} />, text: 'Deals' },
+  { to: '/payments', icon: <CreditCard size={20} />, text: 'Payments' },
 ];
 
   const sidebarItems = user.role === 'entrepreneur' ? entrepreneurItems : investorItems;

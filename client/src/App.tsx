@@ -32,6 +32,7 @@ import { DocumentsPage } from './pages/documents/DocumentsPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
 import { HelpPage } from './pages/help/HelpPage';
 import { DealsPage } from './pages/deals/DealsPage';
+import { PaymentsPage } from './pages/payments/PaymentsPage';
 
 // Profile
 import { EntrepreneurProfile } from './pages/profile/EntrepreneurProfile';
@@ -99,6 +100,7 @@ function App() {
               {/* OTHER FEATURES */}
               <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/documents" element={<DocumentsPage />} />
+              <Route path="/payments" element={<PaymentsPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/help" element={<HelpPage />} />
               <Route path="/deals" element={<DealsPage />} />

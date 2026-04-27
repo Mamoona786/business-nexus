@@ -1,28 +1,58 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { User, CircleDollarSign, Building2, LogIn, AlertCircle } from 'lucide-react';
+import {
+  User,
+  CircleDollarSign,
+  Building2,
+  LogIn,
+  AlertCircle,
+  ShieldCheck
+} from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { UserRole } from '../../types';
+import { loginUserApi } from '../../services/authService';
 
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
+  const [otpEmail, setOtpEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [otp, setOtp] = useState('');
   const [role, setRole] = useState<UserRole>('entrepreneur');
   const [error, setError] = useState<string | null>(null);
   const [pageLoading, setPageLoading] = useState(false);
+  const [otpStep, setOtpStep] = useState(false);
 
-  const { login } = useAuth();
+  const { verifyLoginOtp } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setPageLoading(true);
 
     try {
-      await login(email, password, role);
+      const response = await loginUserApi(email, password, role);
+
+      if (response.requiresOtp) {
+        setOtpEmail(response.email);
+        setOtpStep(true);
+      }
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Login failed');
+    } finally {
+      setPageLoading(false);
+    }
+  };
+
+  const handleOtpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setPageLoading(true);
+
+    try {
+      await verifyLoginOtp(otpEmail, otp, role);
       navigate(role === 'entrepreneur' ? '/dashboard/entrepreneur' : '/dashboard/investor');
     } catch (err) {
       setError((err as Error).message);
@@ -36,17 +66,18 @@ export const LoginPage: React.FC = () => {
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center">
           <div className="w-12 h-12 bg-primary-600 rounded-md flex items-center justify-center">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-white">
-              <path d="M20 7H4C2.89543 7 2 7.89543 2 9V19C2 20.1046 2.89543 21 4 21H20C21.1046 21 22 20.1046 22 19V9C22 7.89543 21.1046 7 20 7Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M16 21V5C16 3.89543 15.1046 3 14 3H10C8.89543 3 8 3.89543 8 5V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+            <ShieldCheck className="text-white" size={30} />
           </div>
         </div>
+
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Sign in to Business Nexus
+          {otpStep ? 'Verify login OTP' : 'Sign in to Business Nexus'}
         </h2>
+
         <p className="mt-2 text-center text-sm text-gray-600">
-          Connect with investors and entrepreneurs
+          {otpStep
+            ? `We sent a 6-digit OTP to ${otpEmail}`
+            : 'Connect with investors and entrepreneurs'}
         </p>
       </div>
 
@@ -59,85 +90,127 @@ export const LoginPage: React.FC = () => {
             </div>
           )}
 
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                I am a
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  className={`py-3 px-4 border rounded-md flex items-center justify-center transition-colors ${
-                    role === 'entrepreneur'
-                      ? 'border-primary-500 bg-primary-50 text-primary-700'
-                      : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                  }`}
-                  onClick={() => setRole('entrepreneur')}
-                >
-                  <Building2 size={18} className="mr-2" />
-                  Entrepreneur
-                </button>
+          {!otpStep ? (
+            <form className="space-y-6" onSubmit={handleLoginSubmit}>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  I am a
+                </label>
 
-                <button
-                  type="button"
-                  className={`py-3 px-4 border rounded-md flex items-center justify-center transition-colors ${
-                    role === 'investor'
-                      ? 'border-primary-500 bg-primary-50 text-primary-700'
-                      : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                  }`}
-                  onClick={() => setRole('investor')}
-                >
-                  <CircleDollarSign size={18} className="mr-2" />
-                  Investor
-                </button>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    className={`py-3 px-4 border rounded-md flex items-center justify-center transition-colors ${
+                      role === 'entrepreneur'
+                        ? 'border-primary-500 bg-primary-50 text-primary-700'
+                        : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                    }`}
+                    onClick={() => setRole('entrepreneur')}
+                  >
+                    <Building2 size={18} className="mr-2" />
+                    Entrepreneur
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`py-3 px-4 border rounded-md flex items-center justify-center transition-colors ${
+                      role === 'investor'
+                        ? 'border-primary-500 bg-primary-50 text-primary-700'
+                        : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                    }`}
+                    onClick={() => setRole('investor')}
+                  >
+                    <CircleDollarSign size={18} className="mr-2" />
+                    Investor
+                  </button>
+                </div>
               </div>
-            </div>
 
-            <Input
-              label="Email address"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              fullWidth
-              startAdornment={<User size={18} />}
-            />
+              <Input
+                label="Email address"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                fullWidth
+                startAdornment={<User size={18} />}
+              />
 
-            <Input
-              label="Password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              fullWidth
-            />
+              <Input
+                label="Password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                fullWidth
+              />
 
-            <div className="flex items-center justify-between">
-              <div className="text-sm ml-auto">
-                <Link to="/forgot-password" className="font-medium text-primary-600 hover:text-primary-500">
-                  Forgot your password?
+              <div className="flex items-center justify-between">
+                <div className="text-sm ml-auto">
+                  <Link
+                    to="/forgot-password"
+                    className="font-medium text-primary-600 hover:text-primary-500"
+                  >
+                    Forgot your password?
+                  </Link>
+                </div>
+              </div>
+
+              <Button
+                type="submit"
+                fullWidth
+                isLoading={pageLoading}
+                leftIcon={<LogIn size={18} />}
+              >
+                Send OTP
+              </Button>
+            </form>
+          ) : (
+            <form className="space-y-6" onSubmit={handleOtpSubmit}>
+              <Input
+                label="Enter OTP"
+                type="text"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+                required
+                fullWidth
+                maxLength={6}
+                startAdornment={<ShieldCheck size={18} />}
+              />
+
+              <Button
+                type="submit"
+                fullWidth
+                isLoading={pageLoading}
+                leftIcon={<ShieldCheck size={18} />}
+              >
+                Verify OTP & Login
+              </Button>
+
+              <button
+                type="button"
+                className="w-full text-sm text-primary-600 hover:text-primary-500"
+                onClick={() => {
+                  setOtpStep(false);
+                  setOtp('');
+                  setError(null);
+                }}
+              >
+                Back to login
+              </button>
+            </form>
+          )}
+
+          {!otpStep && (
+            <div className="mt-6 text-center">
+              <p className="text-sm text-gray-600">
+                Don't have an account?{' '}
+                <Link to="/register" className="font-medium text-primary-600 hover:text-primary-500">
+                  Sign up
                 </Link>
-              </div>
+              </p>
             </div>
-
-            <Button
-              type="submit"
-              fullWidth
-              isLoading={pageLoading}
-              leftIcon={<LogIn size={18} />}
-            >
-              Sign in
-            </Button>
-          </form>
-
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
-              Don't have an account?{' '}
-              <Link to="/register" className="font-medium text-primary-600 hover:text-primary-500">
-                Sign up
-              </Link>
-            </p>
-          </div>
+          )}
         </div>
       </div>
     </div>
