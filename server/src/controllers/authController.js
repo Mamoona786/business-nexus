@@ -34,6 +34,24 @@ const formatUserResponse = (user) => ({
   minimumInvestment: user.minimumInvestment || '',
   maximumInvestment: user.maximumInvestment || '',
   investmentHistory: user.investmentHistory || '',
+
+  walletBalance: user.walletBalance || 0,
+  notificationPreferences: user.notificationPreferences || {
+    email: true,
+    inApp: true,
+    messages: true,
+    meetings: true,
+    documents: true,
+    payments: true,
+    collaborations: true
+  },
+  privacySettings: user.privacySettings || {
+    profileVisibility: 'public',
+    showEmail: false,
+    showOnlineStatus: true
+  },
+  twoFactorEnabled: user.twoFactorEnabled || false,
+
   createdAt: user.createdAt
 });
 

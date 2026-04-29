@@ -9,14 +9,14 @@ const supportMessageSchema = new mongoose.Schema(
     },
     name: {
       type: String,
-      required: true,
+      required: [true, 'Name is required'],
       trim: true
     },
     email: {
       type: String,
-      required: true,
-      trim: true,
-      lowercase: true
+      required: [true, 'Email is required'],
+      lowercase: true,
+      trim: true
     },
     subject: {
       type: String,
@@ -25,7 +25,7 @@ const supportMessageSchema = new mongoose.Schema(
     },
     message: {
       type: String,
-      required: true,
+      required: [true, 'Message is required'],
       trim: true
     },
     status: {
@@ -34,7 +34,9 @@ const supportMessageSchema = new mongoose.Schema(
       default: 'open'
     }
   },
-  { timestamps: true }
+  {
+    timestamps: true
+  }
 );
 
 const SupportMessage = mongoose.model('SupportMessage', supportMessageSchema);
