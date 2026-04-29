@@ -16,10 +16,6 @@ const formatUser = (user) => ({
     website: '',
     linkedin: ''
   },
-  walletBalance: user.walletBalance || 0,
-  notificationPreferences: user.notificationPreferences,
-  privacySettings: user.privacySettings,
-  twoFactorEnabled: user.twoFactorEnabled,
   startupName: user.startupName || '',
   pitchSummary: user.pitchSummary || '',
   fundingNeeded: user.fundingNeeded || '',
@@ -34,39 +30,58 @@ const formatUser = (user) => ({
   minimumInvestment: user.minimumInvestment || '',
   maximumInvestment: user.maximumInvestment || '',
   investmentHistory: user.investmentHistory || '',
+  walletBalance: user.walletBalance || 0,
+  notificationPreferences: user.notificationPreferences,
+  privacySettings: user.privacySettings,
+  twoFactorEnabled: user.twoFactorEnabled,
   createdAt: user.createdAt
 });
 
-export const updateAccountSettings = async (req, res, next) => {
+export const getSettings = async (req, res, next) => {
   try {
-    const allowedFields = [
-      'name',
-      'email',
-      'avatarUrl',
-      'bio',
-      'location',
-      'preferences',
-      'experience',
-      'interests',
-      'contactInfo'
-    ];
-
-    const updates = {};
-
-    allowedFields.forEach((field) => {
-      if (req.body[field] !== undefined) {
-        updates[field] = req.body[field];
+    res.status(200).json({
+      settings: {
+        notificationPreferences: req.user.notificationPreferences,
+        privacySettings: req.user.privacySettings,
+        twoFactorEnabled: req.user.twoFactorEnabled
       }
     });
+  } catch (error) {
+    next(error);
+  }
+};
 
-    const user = await User.findByIdAndUpdate(req.user._id, updates, {
-      new: true,
-      runValidators: true
-    }).select('-password');
+export const updateAccountSettings = async (req, res, next) => {
+  try {
+    const { name, email, location, bio } = req.body;
+
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      res.status(404);
+      throw new Error('User not found');
+    }
+
+    if (email && email.toLowerCase() !== user.email) {
+      const existingUser = await User.findOne({ email: email.toLowerCase() });
+
+      if (existingUser) {
+        res.status(400);
+        throw new Error('Email is already in use');
+      }
+
+      user.email = email.toLowerCase();
+    }
+
+    if (name !== undefined) user.name = name;
+    if (location !== undefined) user.location = location;
+    if (bio !== undefined) user.bio = bio;
+
+    const updatedUser = await user.save();
 
     res.status(200).json({
       message: 'Account settings updated successfully',
-      user: formatUser(user)
+      user: formatUser(updatedUser)
     });
   } catch (error) {
     next(error);
@@ -75,24 +90,14 @@ export const updateAccountSettings = async (req, res, next) => {
 
 export const changePassword = async (req, res, next) => {
   try {
-    const { currentPassword, newPassword, confirmPassword } = req.body;
-
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      res.status(400);
-      throw new Error('Current password, new password and confirm password are required');
-    }
-
-    if (newPassword !== confirmPassword) {
-      res.status(400);
-      throw new Error('New password and confirm password do not match');
-    }
-
-    if (newPassword.length < 8) {
-      res.status(400);
-      throw new Error('Password must be at least 8 characters');
-    }
+    const { currentPassword, newPassword } = req.body;
 
     const user = await User.findById(req.user._id).select('+password');
+
+    if (!user) {
+      res.status(404);
+      throw new Error('User not found');
+    }
 
     const isMatch = await user.matchPassword(currentPassword);
 
@@ -116,10 +121,21 @@ export const updateNotificationPreferences = async (req, res, next) => {
   try {
     const user = await User.findById(req.user._id);
 
-    user.notificationPreferences = {
-      ...user.notificationPreferences?.toObject?.(),
-      ...req.body
-    };
+    const allowedFields = [
+      'email',
+      'inApp',
+      'messages',
+      'meetings',
+      'documents',
+      'payments',
+      'collaborations'
+    ];
+
+    allowedFields.forEach((field) => {
+      if (typeof req.body[field] === 'boolean') {
+        user.notificationPreferences[field] = req.body[field];
+      }
+    });
 
     await user.save();
 
@@ -134,22 +150,21 @@ export const updateNotificationPreferences = async (req, res, next) => {
 
 export const updatePrivacySettings = async (req, res, next) => {
   try {
-    const allowedVisibility = ['public', 'private'];
-
-    if (
-      req.body.profileVisibility &&
-      !allowedVisibility.includes(req.body.profileVisibility)
-    ) {
-      res.status(400);
-      throw new Error('Invalid profile visibility value');
-    }
+    const { profileVisibility, showEmail, showOnlineStatus } = req.body;
 
     const user = await User.findById(req.user._id);
 
-    user.privacySettings = {
-      ...user.privacySettings?.toObject?.(),
-      ...req.body
-    };
+    if (profileVisibility !== undefined) {
+      user.privacySettings.profileVisibility = profileVisibility;
+    }
+
+    if (typeof showEmail === 'boolean') {
+      user.privacySettings.showEmail = showEmail;
+    }
+
+    if (typeof showOnlineStatus === 'boolean') {
+      user.privacySettings.showOnlineStatus = showOnlineStatus;
+    }
 
     await user.save();
 
@@ -168,18 +183,13 @@ export const toggleTwoFactor = async (req, res, next) => {
 
     if (typeof enabled !== 'boolean') {
       res.status(400);
-      throw new Error('Enabled must be true or false');
+      throw new Error('Enabled value must be true or false');
     }
 
-    const user = await User.findByIdAndUpdate(
-      req.user._id,
-      {
-        twoFactorEnabled: enabled
-      },
-      {
-        new: true
-      }
-    ).select('-password');
+    const user = await User.findById(req.user._id);
+    user.twoFactorEnabled = enabled;
+
+    await user.save();
 
     res.status(200).json({
       message: enabled

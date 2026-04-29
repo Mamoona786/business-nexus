@@ -1,45 +1,52 @@
 import { API } from './api';
 import { NotificationPreferences, PrivacySettings, User } from '../types';
 
-export const updateAccountSettingsApi = async (
-  updates: Partial<User>
-): Promise<{ message: string; user: User }> => {
-  const { data } = await API.patch('/settings/account', updates);
+export const getSettingsApi = async (): Promise<{
+  settings: {
+    notificationPreferences: NotificationPreferences;
+    privacySettings: PrivacySettings;
+    twoFactorEnabled: boolean;
+  };
+}> => {
+  const { data } = await API.get('/settings');
+  return data;
+};
+
+export const updateAccountSettingsApi = async (payload: {
+  name?: string;
+  email?: string;
+  location?: string;
+  bio?: string;
+}): Promise<{ message: string; user: User }> => {
+  const { data } = await API.put('/settings/account', payload);
   return data;
 };
 
 export const changePasswordApi = async (payload: {
   currentPassword: string;
   newPassword: string;
-  confirmPassword: string;
 }): Promise<{ message: string }> => {
-  const { data } = await API.patch('/settings/password', payload);
+  const { data } = await API.put('/settings/password', payload);
   return data;
 };
 
 export const updateNotificationPreferencesApi = async (
-  preferences: Partial<NotificationPreferences>
-): Promise<{
-  message: string;
-  notificationPreferences: NotificationPreferences;
-}> => {
-  const { data } = await API.patch('/settings/notifications', preferences);
+  payload: Partial<NotificationPreferences>
+): Promise<{ message: string; notificationPreferences: NotificationPreferences }> => {
+  const { data } = await API.put('/settings/notifications', payload);
   return data;
 };
 
 export const updatePrivacySettingsApi = async (
-  privacySettings: Partial<PrivacySettings>
-): Promise<{
-  message: string;
-  privacySettings: PrivacySettings;
-}> => {
-  const { data } = await API.patch('/settings/privacy', privacySettings);
+  payload: Partial<PrivacySettings>
+): Promise<{ message: string; privacySettings: PrivacySettings }> => {
+  const { data } = await API.put('/settings/privacy', payload);
   return data;
 };
 
 export const toggleTwoFactorApi = async (
   enabled: boolean
 ): Promise<{ message: string; twoFactorEnabled: boolean }> => {
-  const { data } = await API.patch('/settings/two-factor', { enabled });
+  const { data } = await API.put('/settings/2fa', { enabled });
   return data;
 };

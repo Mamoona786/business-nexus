@@ -1,6 +1,6 @@
 import React from 'react';
 
-interface CardProps {
+interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   className?: string;
   onClick?: () => void;
@@ -12,21 +12,26 @@ export const Card: React.FC<CardProps> = ({
   className = '',
   onClick,
   hoverable = false,
+  ...props
 }) => {
-  const hoverableClass = hoverable ? 'transform hover:-translate-y-1 transition-transform duration-300 cursor-pointer' : '';
+  const hoverableClass = hoverable
+    ? 'transform hover:-translate-y-1 transition-transform duration-300 cursor-pointer'
+    : '';
+
   const clickableClass = onClick ? 'cursor-pointer' : '';
-  
+
   return (
-    <div 
+    <div
       className={`bg-white rounded-lg shadow-md overflow-hidden ${hoverableClass} ${clickableClass} ${className}`}
       onClick={onClick}
+      {...props}
     >
       {children}
     </div>
   );
 };
 
-interface CardHeaderProps {
+interface CardHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   className?: string;
 }
@@ -34,15 +39,19 @@ interface CardHeaderProps {
 export const CardHeader: React.FC<CardHeaderProps> = ({
   children,
   className = '',
+  ...props
 }) => {
   return (
-    <div className={`px-6 py-4 border-b border-gray-200 ${className}`}>
+    <div
+      className={`px-6 py-4 border-b border-gray-200 ${className}`}
+      {...props}
+    >
       {children}
     </div>
   );
 };
 
-interface CardBodyProps {
+interface CardBodyProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   className?: string;
 }
@@ -50,15 +59,16 @@ interface CardBodyProps {
 export const CardBody: React.FC<CardBodyProps> = ({
   children,
   className = '',
+  ...props
 }) => {
   return (
-    <div className={`px-6 py-4 ${className}`}>
+    <div className={`px-6 py-4 ${className}`} {...props}>
       {children}
     </div>
   );
 };
 
-interface CardFooterProps {
+interface CardFooterProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   className?: string;
 }
@@ -66,9 +76,13 @@ interface CardFooterProps {
 export const CardFooter: React.FC<CardFooterProps> = ({
   children,
   className = '',
+  ...props
 }) => {
   return (
-    <div className={`px-6 py-4 border-t border-gray-200 ${className}`}>
+    <div
+      className={`px-6 py-4 border-t border-gray-200 ${className}`}
+      {...props}
+    >
       {children}
     </div>
   );

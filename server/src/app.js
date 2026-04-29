@@ -20,6 +20,8 @@ import paymentRoutes from './routes/paymentRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import supportRoutes from './routes/supportRoutes.js';
+import swaggerUi from 'swagger-ui-express';
+import swaggerSpec from './config/swagger.js';
 
 import { notFound, errorHandler } from './middleware/errorMiddleware.js';
 
@@ -90,6 +92,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/support', supportRoutes);
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use(notFound);
 app.use(errorHandler);
