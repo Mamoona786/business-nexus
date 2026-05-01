@@ -165,7 +165,13 @@ export const loginUser = async (req, res, next) => {
     user.twoFactorOtpVerified = false;
 
     await user.save({ validateBeforeSave: false });
-    await sendOtpEmail(user, otp);
+    try {
+  await sendOtpEmail(user, otp);
+} catch (emailError) {
+  console.error('OTP email failed:', emailError.message);
+  res.status(500);
+  throw new Error('Failed to send OTP email. Please try again later.');
+}
 
     res.status(200).json({
       requiresOtp: true,

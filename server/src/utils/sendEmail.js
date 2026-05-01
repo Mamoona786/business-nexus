@@ -16,16 +16,26 @@ const sendEmail = async ({ to, subject, html, text }) => {
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS
-    }
+    },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 10000
   });
 
-  await transporter.sendMail({
-    from: `"Business Nexus" <${process.env.EMAIL_USER}>`,
-    to,
-    subject,
-    text,
-    html
-  });
+  try {
+    await transporter.sendMail({
+      from: `"Business Nexus" <${process.env.EMAIL_USER}>`,
+      to,
+      subject,
+      text,
+      html
+    });
+
+    console.log(`Email sent successfully to ${to}`);
+  } catch (error) {
+    console.error('Email sending failed:', error.message);
+    throw new Error('Failed to send email. Please try again later.');
+  }
 };
 
 export default sendEmail;
