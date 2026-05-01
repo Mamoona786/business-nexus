@@ -2,16 +2,7 @@ import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { body } from 'express-validator';
 
-import {
-  registerUser,
-  loginUser,
-  verifyLoginOtp,
-  logoutUser,
-  getMe,
-  forgotPassword,
-  resetPassword
-} from '../controllers/authController.js';
-
+import { registerUser, loginUser, verifyLoginOtp, logoutUser, getMe, forgotPassword, resetPassword} from '../controllers/authController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { validate } from '../middleware/validateMiddleware.js';
 
