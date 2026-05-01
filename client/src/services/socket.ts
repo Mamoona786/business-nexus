@@ -2,13 +2,18 @@ import { io, Socket } from 'socket.io-client';
 
 let socket: Socket | null = null;
 
+const getSocketBaseUrl = () => {
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+  return apiUrl.replace(/\/api\/?$/, '');
+};
+
 export const connectSocket = (): Socket | null => {
   const token = localStorage.getItem('business_nexus_token');
 
   if (!token) return null;
 
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-  const baseUrl = apiUrl.replace('/api', '');
+  const baseUrl = getSocketBaseUrl();
 
   if (socket?.connected) return socket;
 
