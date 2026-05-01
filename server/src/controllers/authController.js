@@ -1,4 +1,3 @@
-import crypto from 'crypto';
 import User from '../models/User.js';
 import generateToken from '../utils/generateToken.js';
 import sendEmail from '../utils/sendEmail.js';
@@ -34,7 +33,6 @@ const formatUserResponse = (user) => ({
   minimumInvestment: user.minimumInvestment || '',
   maximumInvestment: user.maximumInvestment || '',
   investmentHistory: user.investmentHistory || '',
-
   walletBalance: user.walletBalance || 0,
   notificationPreferences: user.notificationPreferences || {
     email: true,
@@ -51,7 +49,6 @@ const formatUserResponse = (user) => ({
     showOnlineStatus: true
   },
   twoFactorEnabled: user.twoFactorEnabled || false,
-
   createdAt: user.createdAt
 });
 
@@ -71,35 +68,6 @@ const clearTokenCookie = (res) => {
     ...cookieOptions,
     maxAge: 0,
     expires: new Date(0)
-  });
-};
-
-const generateOtp = () => {
-  return crypto.randomInt(100000, 999999).toString();
-};
-
-const hashOtp = (otp) => {
-  return crypto.createHash('sha256').update(otp).digest('hex');
-};
-
-const sendOtpEmail = async (user, otp) => {
-  const text = `Your Business Nexus login OTP is ${otp}. It expires in 10 minutes.`;
-
-  const html = `
-    <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-      <h2>Business Nexus Login Verification</h2>
-      <p>Your OTP code is:</p>
-      <h1 style="letter-spacing: 4px;">${otp}</h1>
-      <p>This code expires in 10 minutes.</p>
-      <p>If you did not request this login, please ignore this email.</p>
-    </div>
-  `;
-
-  await sendEmail({
-    to: user.email,
-    subject: 'Business Nexus Login OTP',
-    text,
-    html
   });
 };
 
@@ -138,7 +106,7 @@ export const loginUser = async (req, res, next) => {
     const { email, password, role } = req.body;
 
     const user = await User.findOne({ email: email.toLowerCase() }).select(
-      '+password +twoFactorOtp +twoFactorOtpExpire'
+      '+password'
     );
 
     if (!user) {
@@ -157,54 +125,6 @@ export const loginUser = async (req, res, next) => {
       res.status(401);
       throw new Error('Invalid email or password');
     }
-
-    const otp = generateOtp();
-
-    user.twoFactorOtp = hashOtp(otp);
-    user.twoFactorOtpExpire = Date.now() + 10 * 60 * 1000;
-    user.twoFactorOtpVerified = false;
-
-    await user.save({ validateBeforeSave: false });
-    try {
-  await sendOtpEmail(user, otp);
-} catch (emailError) {
-  console.error('OTP email failed:', emailError.message);
-  res.status(500);
-  throw new Error('Failed to send OTP email. Please try again later.');
-}
-
-    res.status(200).json({
-      requiresOtp: true,
-      message: 'OTP has been sent to your email',
-      email: user.email,
-      role: user.role
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const verifyLoginOtp = async (req, res, next) => {
-  try {
-    const { email, otp, role } = req.body;
-
-    const user = await User.findOne({
-      email: email.toLowerCase(),
-      role,
-      twoFactorOtp: hashOtp(otp),
-      twoFactorOtpExpire: { $gt: Date.now() }
-    }).select('+twoFactorOtp +twoFactorOtpExpire');
-
-    if (!user) {
-      res.status(400);
-      throw new Error('Invalid or expired OTP');
-    }
-
-    user.twoFactorOtp = undefined;
-    user.twoFactorOtpExpire = undefined;
-    user.twoFactorOtpVerified = true;
-
-    await user.save({ validateBeforeSave: false });
 
     const token = generateToken(user._id, user.role);
     setTokenCookie(res, token);

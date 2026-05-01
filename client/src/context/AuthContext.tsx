@@ -4,7 +4,6 @@ import toast from 'react-hot-toast';
 import {
   registerUserApi,
   loginUserApi,
-  verifyLoginOtpApi,
   forgotPasswordApi,
   resetPasswordApi,
   logoutApi,
@@ -18,11 +17,14 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const USER_STORAGE_KEY = 'business_nexus_user';
 const TOKEN_STORAGE_KEY = 'business_nexus_token';
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
+  children
+}) => {
   const [user, setUser] = useState<User | null>(() => {
     const storedUser = localStorage.getItem(USER_STORAGE_KEY);
     return storedUser ? JSON.parse(storedUser) : null;
   });
+
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -36,6 +38,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         const response = await getMeApi();
+
         setUser(response.user);
         localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.user));
         connectSocket();
@@ -52,45 +55,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initialiseAuth();
   }, []);
 
-  const login = async (email: string, password: string, role: UserRole): Promise<void> => {
-  setIsLoading(true);
+  const login = async (
+    email: string,
+    password: string,
+    role: UserRole
+  ): Promise<void> => {
+    setIsLoading(true);
 
-  try {
-    await loginUserApi(email, password, role);
-    toast.success('OTP sent to your email');
-  } catch (error: any) {
-    const message = error?.response?.data?.message || 'Login failed';
-    toast.error(message);
-    throw new Error(message);
-  } finally {
-    setIsLoading(false);
-  }
-};
+    try {
+      const response = await loginUserApi(email, password, role);
 
-  const verifyLoginOtp = async (
-  email: string,
-  otp: string,
-  role: UserRole
-): Promise<void> => {
-  setIsLoading(true);
+      setUser(response.user);
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.user));
+      localStorage.setItem(TOKEN_STORAGE_KEY, response.token);
 
-  try {
-    const response = await verifyLoginOtpApi(email, otp, role);
+      connectSocket();
+      toast.success('Successfully logged in');
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        'Login failed';
 
-    setUser(response.user);
-    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.user));
-    localStorage.setItem(TOKEN_STORAGE_KEY, response.token);
+      toast.error(message);
+      throw new Error(message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    connectSocket();
-    toast.success('Successfully logged in');
-  } catch (error: any) {
-    const message = error?.response?.data?.message || 'OTP verification failed';
-    toast.error(message);
-    throw new Error(message);
-  } finally {
-    setIsLoading(false);
-  }
-};
   const register = async (
     name: string,
     email: string,
@@ -98,18 +91,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     role: UserRole
   ): Promise<void> => {
     setIsLoading(true);
+
     try {
       const response = await registerUserApi(name, email, password, role);
+
       setUser(response.user);
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.user));
       localStorage.setItem(TOKEN_STORAGE_KEY, response.token);
+
       connectSocket();
       toast.success('Account created successfully');
     } catch (error: any) {
       const message =
-  error?.response?.data?.message ||
-  error?.message ||
-  'Registration failed';
+        error?.response?.data?.message ||
+        error?.message ||
+        'Registration failed';
+
       toast.error(message);
       throw new Error(message);
     } finally {
@@ -122,18 +119,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const response = await forgotPasswordApi(email);
       toast.success(response.message);
     } catch (error: any) {
-      const message = error?.response?.data?.message || 'Forgot password request failed';
+      const message =
+        error?.response?.data?.message ||
+        'Forgot password request failed';
+
       toast.error(message);
       throw new Error(message);
     }
   };
 
-  const resetPassword = async (token: string, newPassword: string): Promise<void> => {
+  const resetPassword = async (
+    token: string,
+    newPassword: string
+  ): Promise<void> => {
     try {
       const response = await resetPasswordApi(token, newPassword);
       toast.success(response.message);
     } catch (error: any) {
-      const message = error?.response?.data?.message || 'Password reset failed';
+      const message =
+        error?.response?.data?.message ||
+        'Password reset failed';
+
       toast.error(message);
       throw new Error(message);
     }
@@ -156,11 +162,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateProfile = async (updates: Partial<User>): Promise<void> => {
     try {
       const response = await updateMyProfileApi(updates);
+
       setUser(response.user);
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.user));
+
       toast.success(response.message || 'Profile updated successfully');
     } catch (error: any) {
-      const message = error?.response?.data?.message || 'Profile update failed';
+      const message =
+        error?.response?.data?.message ||
+        'Profile update failed';
+
       toast.error(message);
       throw new Error(message);
     }
@@ -168,7 +179,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const value: AuthContextType = {
     user,
-    verifyLoginOtp,
     login,
     register,
     logout,

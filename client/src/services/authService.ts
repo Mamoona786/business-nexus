@@ -6,13 +6,6 @@ export interface AuthResponse {
   token: string;
 }
 
-export interface LoginOtpResponse {
-  requiresOtp: boolean;
-  message: string;
-  email: string;
-  role: UserRole;
-}
-
 export const registerUserApi = async (
   name: string,
   email: string,
@@ -25,6 +18,7 @@ export const registerUserApi = async (
     password,
     role
   });
+
   return data;
 };
 
@@ -32,25 +26,13 @@ export const loginUserApi = async (
   email: string,
   password: string,
   role: UserRole
-): Promise<LoginOtpResponse> => {
-  const { data } = await API.post<LoginOtpResponse>('/auth/login', {
+): Promise<AuthResponse> => {
+  const { data } = await API.post<AuthResponse>('/auth/login', {
     email,
     password,
     role
   });
-  return data;
-};
 
-export const verifyLoginOtpApi = async (
-  email: string,
-  otp: string,
-  role: UserRole
-): Promise<AuthResponse> => {
-  const { data } = await API.post<AuthResponse>('/auth/verify-otp', {
-    email,
-    otp,
-    role
-  });
   return data;
 };
 
@@ -60,6 +42,7 @@ export const forgotPasswordApi = async (
   const { data } = await API.post<{ message: string }>('/auth/forgot-password', {
     email
   });
+
   return data;
 };
 
@@ -71,15 +54,18 @@ export const resetPasswordApi = async (
     `/auth/reset-password/${token}`,
     { password }
   );
+
   return data;
 };
 
 export const logoutApi = async (): Promise<{ message: string }> => {
   const { data } = await API.post<{ message: string }>('/auth/logout');
+
   return data;
 };
 
 export const getMeApi = async (): Promise<{ user: User }> => {
   const { data } = await API.get<{ user: User }>('/auth/me');
+
   return data;
 };

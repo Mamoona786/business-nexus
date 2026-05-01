@@ -148,7 +148,6 @@ export interface Document {
 export interface AuthContextType {
   user: User | null;
   login: (email: string, password: string, role: UserRole) => Promise<void>;
-  verifyLoginOtp: (email: string, otp: string, role: UserRole) => Promise<void>;
   register: (
     name: string,
     email: string,

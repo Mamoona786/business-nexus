@@ -2,7 +2,7 @@ import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { body } from 'express-validator';
 
-import { registerUser, loginUser, verifyLoginOtp, logoutUser, getMe, forgotPassword, resetPassword} from '../controllers/authController.js';
+import { registerUser, loginUser, logoutUser, getMe, forgotPassword, resetPassword} from '../controllers/authController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { validate } from '../middleware/validateMiddleware.js';
 
@@ -107,43 +107,6 @@ router.post(
   loginUser
 );
 
-/**
- * @swagger
- * /auth/verify-otp:
- *   post:
- *     summary: Verify login OTP
- *     tags: [Auth]
- *     security: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           example:
- *             email: ali@example.com
- *             otp: "123456"
- *             role: entrepreneur
- *     responses:
- *       200:
- *         description: Login successful
- *       400:
- *         description: Invalid or expired OTP
- */
-router.post(
-  '/verify-otp',
-  otpLimiter,
-  [
-    body('email').trim().isEmail().withMessage('Valid email is required').normalizeEmail(),
-    body('otp')
-      .trim()
-      .isLength({ min: 6, max: 6 })
-      .withMessage('OTP must be 6 digits')
-      .isNumeric()
-      .withMessage('OTP must contain digits only'),
-    body('role').isIn(['entrepreneur', 'investor']).withMessage('Invalid role selected')
-  ],
-  validate,
-  verifyLoginOtp
-);
 
 /**
  * @swagger

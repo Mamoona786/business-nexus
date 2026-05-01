@@ -1,23 +1,13 @@
 import nodemailer from 'nodemailer';
 
 const sendEmail = async ({ to, subject, html, text }) => {
-  const hasEmailConfig = process.env.EMAIL_USER && process.env.EMAIL_PASS;
-
-  if (!hasEmailConfig) {
-    console.log('Email credentials not configured. Email skipped.');
-    console.log('To:', to);
-    console.log('Subject:', subject);
-    console.log('Text:', text);
-    return;
-  }
-
   const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT || 587),
+    secure: false,
     auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS
     },
     connectionTimeout: 15000,
     greetingTimeout: 15000,
@@ -25,11 +15,8 @@ const sendEmail = async ({ to, subject, html, text }) => {
   });
 
   try {
-    await transporter.verify();
-    console.log('SMTP server is ready');
-
     await transporter.sendMail({
-      from: `"Business Nexus" <${process.env.EMAIL_USER}>`,
+      from: `"Business Nexus" <${process.env.EMAIL_FROM}>`,
       to,
       subject,
       text,
