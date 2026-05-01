@@ -9,6 +9,34 @@ import {
 
 const router = express.Router();
 
+/**
+ * @swagger
+ * tags:
+ *   name: Support
+ *   description: Help and support APIs
+ */
+
+/**
+ * @swagger
+ * /support:
+ *   post:
+ *     summary: Submit support message
+ *     tags: [Support]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           example:
+ *             name: Ali Khan
+ *             email: ali@example.com
+ *             subject: Need help
+ *             message: I need help with my account.
+ *     responses:
+ *       201:
+ *         description: Support message submitted successfully
+ */
 router.post(
   '/',
   protect,
@@ -22,6 +50,18 @@ router.post(
   createSupportMessage
 );
 
+/**
+ * @swagger
+ * /support/my:
+ *   get:
+ *     summary: Get my submitted support messages
+ *     tags: [Support]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Support messages fetched successfully
+ */
 router.get('/my', protect, getMySupportMessages);
 
 export default router;

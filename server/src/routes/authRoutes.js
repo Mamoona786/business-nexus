@@ -33,6 +33,35 @@ const otpLimiter = rateLimit({
   }
 });
 
+/**
+ * @swagger
+ * tags:
+ *   name: Auth
+ *   description: Authentication and account access
+ */
+
+/**
+ * @swagger
+ * /auth/register:
+ *   post:
+ *     summary: Register a new user
+ *     tags: [Auth]
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           example:
+ *             name: Ali Khan
+ *             email: ali@example.com
+ *             password: Password123
+ *             role: entrepreneur
+ *     responses:
+ *       201:
+ *         description: User registered successfully
+ *       400:
+ *         description: Validation error or email already exists
+ */
 router.post(
   '/register',
   authLimiter,
@@ -54,6 +83,27 @@ router.post(
   registerUser
 );
 
+/**
+ * @swagger
+ * /auth/login:
+ *   post:
+ *     summary: Login user and send OTP
+ *     tags: [Auth]
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           example:
+ *             email: ali@example.com
+ *             password: Password123
+ *             role: entrepreneur
+ *     responses:
+ *       200:
+ *         description: OTP sent successfully
+ *       401:
+ *         description: Invalid credentials
+ */
 router.post(
   '/login',
   authLimiter,
@@ -66,6 +116,27 @@ router.post(
   loginUser
 );
 
+/**
+ * @swagger
+ * /auth/verify-otp:
+ *   post:
+ *     summary: Verify login OTP
+ *     tags: [Auth]
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           example:
+ *             email: ali@example.com
+ *             otp: "123456"
+ *             role: entrepreneur
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *       400:
+ *         description: Invalid or expired OTP
+ */
 router.post(
   '/verify-otp',
   otpLimiter,
@@ -83,9 +154,51 @@ router.post(
   verifyLoginOtp
 );
 
+/**
+ * @swagger
+ * /auth/logout:
+ *   post:
+ *     summary: Logout user
+ *     tags: [Auth]
+ *     responses:
+ *       200:
+ *         description: Logged out successfully
+ */
 router.post('/logout', logoutUser);
+
+/**
+ * @swagger
+ * /auth/me:
+ *   get:
+ *     summary: Get current logged-in user
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Current user fetched successfully
+ *       401:
+ *         description: Unauthorized
+ */
 router.get('/me', protect, getMe);
 
+/**
+ * @swagger
+ * /auth/forgot-password:
+ *   post:
+ *     summary: Send password reset email
+ *     tags: [Auth]
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           example:
+ *             email: ali@example.com
+ *     responses:
+ *       200:
+ *         description: Password reset email sent
+ */
 router.post(
   '/forgot-password',
   authLimiter,
@@ -94,6 +207,29 @@ router.post(
   forgotPassword
 );
 
+/**
+ * @swagger
+ * /auth/reset-password/{token}:
+ *   post:
+ *     summary: Reset password using reset token
+ *     tags: [Auth]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: token
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           example:
+ *             password: NewPassword123
+ *     responses:
+ *       200:
+ *         description: Password reset successfully
+ */
 router.post(
   '/reset-password/:token',
   authLimiter,

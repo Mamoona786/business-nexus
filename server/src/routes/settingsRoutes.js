@@ -14,8 +14,42 @@ import {
 
 const router = express.Router();
 
+/**
+ * @swagger
+ * tags:
+ *   name: Settings
+ *   description: Account settings, password, privacy, notifications and 2FA preference APIs
+ */
+
+/**
+ * @swagger
+ * /settings:
+ *   get:
+ *     summary: Get current user settings
+ *     tags: [Settings]
+ *     security:
+ *       - bearerAuth: []
+ */
 router.get('/', protect, getSettings);
 
+/**
+ * @swagger
+ * /settings/account:
+ *   put:
+ *     summary: Update account settings
+ *     tags: [Settings]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           example:
+ *             name: Ali Khan
+ *             email: ali@example.com
+ *             location: Lahore
+ *             bio: Startup founder
+ */
 router.put(
   '/account',
   protect,
@@ -28,6 +62,22 @@ router.put(
   updateAccountSettings
 );
 
+/**
+ * @swagger
+ * /settings/password:
+ *   put:
+ *     summary: Change password
+ *     tags: [Settings]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           example:
+ *             currentPassword: Password123
+ *             newPassword: NewPassword123
+ */
 router.put(
   '/password',
   protect,
@@ -47,8 +97,26 @@ router.put(
   changePassword
 );
 
+/**
+ * @swagger
+ * /settings/notifications:
+ *   put:
+ *     summary: Update notification preferences
+ *     tags: [Settings]
+ *     security:
+ *       - bearerAuth: []
+ */
 router.put('/notifications', protect, updateNotificationPreferences);
 
+/**
+ * @swagger
+ * /settings/privacy:
+ *   put:
+ *     summary: Update privacy settings
+ *     tags: [Settings]
+ *     security:
+ *       - bearerAuth: []
+ */
 router.put(
   '/privacy',
   protect,
@@ -62,6 +130,15 @@ router.put(
   updatePrivacySettings
 );
 
+/**
+ * @swagger
+ * /settings/2fa:
+ *   put:
+ *     summary: Toggle 2FA preference
+ *     tags: [Settings]
+ *     security:
+ *       - bearerAuth: []
+ */
 router.put('/2fa', protect, toggleTwoFactor);
 
 export default router;
