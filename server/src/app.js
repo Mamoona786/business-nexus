@@ -36,6 +36,8 @@ app.set('trust proxy', 1);
 const allowedOrigins = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
   process.env.CLIENT_URL
 ].filter(Boolean);
 
@@ -47,7 +49,8 @@ app.use(
 
 app.use(
   cors({
-    origin(origin, callback) {
+    origin: function (origin, callback) {
+      // allow Postman, mobile apps, server-to-server requests
       if (!origin) {
         return callback(null, true);
       }
@@ -56,11 +59,9 @@ app.use(
         return callback(null, true);
       }
 
-      return callback(new Error(`Not allowed by CORS: ${origin}`));
+      return callback(new Error(`CORS blocked for origin: ${origin}`));
     },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    credentials: true
   })
 );
 
