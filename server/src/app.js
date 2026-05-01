@@ -20,6 +20,7 @@ import paymentRoutes from './routes/paymentRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import supportRoutes from './routes/supportRoutes.js';
+
 import swaggerUi from 'swagger-ui-express';
 import swaggerSpec from './config/swagger.js';
 
@@ -47,13 +48,19 @@ app.use(
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
+      if (!origin) {
+        return callback(null, true);
       }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error(`Not allowed by CORS: ${origin}`));
     },
-    credentials: true
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization']
   })
 );
 
@@ -62,7 +69,9 @@ const globalLimiter = rateLimit({
   max: 300,
   message: {
     message: 'Too many requests from this IP, please try again later'
-  }
+  },
+  standardHeaders: true,
+  legacyHeaders: false
 });
 
 app.use(globalLimiter);
@@ -78,7 +87,17 @@ app.use(hpp());
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 app.get('/', (req, res) => {
-  res.json({ message: 'Business Nexus API is running securely' });
+  res.json({
+    message: 'Business Nexus API is running securely',
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    message: 'Backend is healthy'
+  });
 });
 
 app.use('/api/auth', authRoutes);
